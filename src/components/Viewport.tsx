@@ -158,15 +158,13 @@ const PlaneHeatmap: React.FC<{ obj: SceneObject; results: any[]; selectedBand: n
 
   const colors = React.useMemo(() => {
     if (results.length === 0) return new Float32Array(0);
-    if (results.length !== expectedVertices) {
-       console.warn(`[PlaneHeatmap] Vertex mismatch on ${obj.name}: Expected ${expectedVertices}, got ${results.length}`);
-    }
-
-    const colorOutput: number[] = [];
+    
+    const count = Math.min(results.length, expectedVertices);
+    const colorOutput = new Float32Array(expectedVertices * 3);
     const color = new THREE.Color();
     const bandIdx = selectedBand === 24 ? 13 : selectedBand; // BB -> 1kHz
+    
     const spls = results.map(r => r.metrics?.spl?.[bandIdx] ?? -Infinity);
-
     const validSpls = spls.filter(s => isFinite(s) && s > -100);
     const minSpl = validSpls.length > 0 ? Math.min(...validSpls) : 0;
     const maxSpl = validSpls.length > 0 ? Math.max(...validSpls) : 0;
@@ -176,17 +174,17 @@ const PlaneHeatmap: React.FC<{ obj: SceneObject; results: any[]; selectedBand: n
       if (i < results.length) {
         const raw = spls[i];
         if (!isFinite(raw) || raw < -100) {
-           colorOutput.push(0.1, 0.1, 0.15); // Dark grey
+           colorOutput[i*3] = 0.1; colorOutput[i*3+1] = 0.1; colorOutput[i*3+2] = 0.15;
         } else {
-          const t = (raw - minSpl) / range;
+          const t = Math.max(0, Math.min(1, (raw - minSpl) / range));
           color.setHSL(0.7 * (1 - t), 1, 0.5); // Blue to Red
-          colorOutput.push(color.r, color.g, color.b);
+          colorOutput[i*3] = color.r; colorOutput[i*3+1] = color.g; colorOutput[i*3+2] = color.b;
         }
       } else {
-        colorOutput.push(0.1, 0.1, 0.15);
+        colorOutput[i*3] = 0.1; colorOutput[i*3+1] = 0.1; colorOutput[i*3+2] = 0.15;
       }
     }
-    return new Float32Array(colorOutput);
+    return colorOutput;
   }, [results, expectedVertices, selectedBand]);
 
   if (colors.length === 0 || results.length === 0) {
@@ -313,7 +311,7 @@ const SceneContent: React.FC = () => {
 
       {showRays && selectedResult?.rayPaths && (
         <group>
-          {selectedResult.rayPaths.map((path, i) => {
+          {selectedResult.rayPaths.slice(0, 100).map((path, i) => {
             // Highlight selected ray
             const isSelected = selectedRayIndex === i;
             const isMuted = selectedRayIndex !== null && !isSelected;
@@ -327,6 +325,8 @@ const SceneContent: React.FC = () => {
             
             // Time Scrubber filtering & animation
             const currentDist = (currentTime / 1000) * 343.0; // in meters
+            if (!isFinite(currentDist)) return null;
+
             let accumulatedDist = 0;
             const animatedPts: [number, number, number][] = [];
             animatedPts.push(maxPts[0]);
@@ -344,8 +344,10 @@ const SceneContent: React.FC = () => {
                   const remaining = currentDist - accumulatedDist;
                   if (remaining > 0) {
                      const dir = new THREE.Vector3().subVectors(p2, p1).normalize();
-                     const interp = p1.clone().addScaledVector(dir, remaining);
-                     animatedPts.push([interp.x, interp.y, interp.z]);
+                     if (isFinite(dir.x) && isFinite(dir.y) && isFinite(dir.z)) {
+                       const interp = p1.clone().addScaledVector(dir, remaining);
+                       animatedPts.push([interp.x, interp.y, interp.z]);
+                     }
                   }
                   break;
                }
@@ -377,8 +379,6 @@ const SceneContent: React.FC = () => {
                   e.stopPropagation(); 
                   setSelectedRayIndex(isSelected ? null : i); 
                 }}
-                onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
-                onPointerOut={() => { document.body.style.cursor = 'auto'; }}
               />
             )
           })}
@@ -398,14 +398,16 @@ const SceneContent: React.FC = () => {
 export const Viewport: React.FC = () => {
   const { showRays, showHeatmap, showRoomModes, maxVisibleBounces, setVisualizationOptions, results, selectedBand, setSelectedBand, viewMode, setViewMode } = useProjectStore();
   
-  let minSpl = 0, maxSpl = 0;
-  if (results.length > 0) {
-     // index 24 is Broadband (mapped to 1kHz ref at index 13)
-     const bandIdx = selectedBand === 24 ? 13 : selectedBand;
-     const spls = results.map(r => r.metrics.spl[bandIdx]);
-     minSpl = Math.min(...spls);
-     maxSpl = Math.max(...spls);
-  }
+  const splStats = React.useMemo(() => {
+    if (results.length === 0) return { min: 0, max: 0 };
+    const bandIdx = selectedBand === 24 ? 13 : selectedBand;
+    // Filter out invalid/inf values before math
+    const vals = results.map(r => r.metrics.spl[bandIdx]).filter(v => isFinite(v) && v > -100);
+    if (vals.length === 0) return { min: 0, max: 0 };
+    return { min: Math.min(...vals), max: Math.max(...vals) };
+  }, [results, selectedBand]);
+
+  const { min: minSpl, max: maxSpl } = splStats;
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
