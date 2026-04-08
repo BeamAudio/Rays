@@ -6,9 +6,11 @@ import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 interface BalloonVisualizerProps {
   hSpread: number;
   vSpread: number;
+  tilt: number;
+  pan: number;
 }
 
-export const BalloonVisualizer: React.FC<BalloonVisualizerProps> = ({ hSpread, vSpread }) => {
+export const BalloonVisualizer: React.FC<BalloonVisualizerProps> = ({ hSpread, vSpread, tilt, pan }) => {
   const meshRef = useRef<THREE.Mesh>(null);
 
   // Generate morphed sphere vertices based on H/V spread (Gaussian Horn Model)
@@ -54,7 +56,13 @@ export const BalloonVisualizer: React.FC<BalloonVisualizerProps> = ({ hSpread, v
 
   useFrame((state) => {
     if (meshRef.current) {
-      meshRef.current.rotation.y = state.clock.getElapsedTime() * 0.2;
+      // Apply base auto-rotation, plus user-defined tilt (X) and pan (Y)
+      const autoRotate = state.clock.getElapsedTime() * 0.2;
+      meshRef.current.rotation.set(
+        (tilt * -1) * (Math.PI / 180), // Negative tilt is usually downward
+        autoRotate + (pan * -1) * (Math.PI / 180),
+        0
+      );
     }
   });
 

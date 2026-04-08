@@ -95,6 +95,7 @@ export type Perspective = 'WORKSPACE' | 'MARKETPLACE' | 'DESIGNER';
 
 interface ProjectState {
   currentView: Perspective;
+  viewMode: '2D' | '3D';
   environmentSettings: EnvironmentSettings;
   objects: SceneObject[];
   selectedId: string | null;
@@ -126,6 +127,7 @@ interface ProjectState {
   setAmbientNoise: (noise: number[]) => void;
   setAuralization: (settings: Partial<ProjectState['auralizationSettings']>) => void;
   setCurrentView: (view: Perspective) => void;
+  setViewMode: (mode: '2D' | '3D') => void;
   installModel: (model: SpeakerModel) => void;
   uninstallModel: (id: string) => void;
 }
@@ -134,6 +136,7 @@ export const useProjectStore = create<ProjectState>()(
   persist(
     (set) => ({
       currentView: 'WORKSPACE',
+      viewMode: '3D',
       installedModels: [], // User's community/installed models
       environmentSettings: {
         temperature: 20,
@@ -179,6 +182,7 @@ export const useProjectStore = create<ProjectState>()(
       setAmbientNoise: (noise) => set({ ambientNoiseSPL: noise }),
       setAuralization: (settings) => set((state) => ({ auralizationSettings: { ...state.auralizationSettings, ...settings } })),
       setCurrentView: (view) => set({ currentView: view }),
+      setViewMode: (mode) => set({ viewMode: mode }),
       installModel: (model) => set((state) => ({ 
         installedModels: [...state.installedModels.filter(m => m.id !== model.id), model] 
       })),

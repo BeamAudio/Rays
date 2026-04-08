@@ -16,6 +16,8 @@ export const SpeakerDesigner: React.FC = () => {
 
   const [hSpread, setHSpread] = useState(90);
   const [vSpread, setVSpread] = useState(60);
+  const [tilt, setTilt] = useState(0); // Elevation
+  const [pan, setPan] = useState(0);   // Azimuth
   
   // Auto-generate directivity based on H/V spread
   const generateDirectivity = (h: number, v: number): DirectivityPattern => {
@@ -139,6 +141,20 @@ export const SpeakerDesigner: React.FC = () => {
                 </div>
                 <input type="range" min="10" max="180" step="10" value={vSpread} onChange={e => setVSpread(parseInt(e.target.value))} style={{ width: '100%', accentColor: 'var(--accent-primary)' }} />
              </div>
+             <div className="control-group" style={{ marginTop: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                   <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Tilt (Elevation)</label>
+                   <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>{tilt}°</span>
+                </div>
+                <input type="range" min="-90" max="90" step="5" value={tilt} onChange={e => setTilt(parseInt(e.target.value))} style={{ width: '100%', accentColor: 'var(--accent-primary)' }} />
+             </div>
+             <div className="control-group">
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                   <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Pan (Azimuth)</label>
+                   <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>{pan}°</span>
+                </div>
+                <input type="range" min="-90" max="90" step="5" value={pan} onChange={e => setPan(parseInt(e.target.value))} style={{ width: '100%', accentColor: 'var(--accent-primary)' }} />
+             </div>
           </div>
         </section>
 
@@ -192,7 +208,7 @@ export const SpeakerDesigner: React.FC = () => {
            <Canvas shadows gl={{ antialias: true }}>
               <color attach="background" args={['#050510']} />
               <fog attach="fog" args={['#050510', 5, 15]} />
-              <BalloonVisualizer hSpread={hSpread} vSpread={vSpread} />
+              <BalloonVisualizer hSpread={hSpread} vSpread={vSpread} tilt={tilt} pan={pan} />
            </Canvas>
            
            <div style={{ position: 'absolute', bottom: '20px', left: '20px', pointerEvents: 'none' }}>

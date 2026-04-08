@@ -1,13 +1,24 @@
 import React, { useRef } from 'react';
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid, TransformControls, PerspectiveCamera, ContactShadows, Line, Html } from '@react-three/drei';
+import { OrbitControls, Grid, TransformControls, PerspectiveCamera, OrthographicCamera, ContactShadows, Line, Html } from '@react-three/drei';
 import { useProjectStore } from '../state/project_state';
 import type { SceneObject } from '../state/project_state';
 
 const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect: () => void }> = ({ obj, isSelected, onSelect }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const { updateObject, results, showHeatmap, selectedBand } = useProjectStore();
+
+  const getMaterialProps = (matName?: string) => {
+    switch (matName?.toLowerCase()) {
+      case 'concrete': return { color: "#888888", opacity: 1.0, roughness: 0.9, metalness: 0.1, transparent: false };
+      case 'wood': return { color: "#8b5a2b", opacity: 1.0, roughness: 0.7, metalness: 0.1, transparent: false };
+      case 'carpet': return { color: "#602020", opacity: 1.0, roughness: 1.0, metalness: 0.0, transparent: false };
+      case 'glass': return { color: "#aaddff", opacity: 0.25, roughness: 0.05, metalness: 0.9, transparent: true };
+      case 'generic':
+      default: return { color: "#ffffff", opacity: 0.4, roughness: 0.2, metalness: 0.5, transparent: true };
+    }
+  };
 
   const handleTransform = () => {
     if (meshRef.current) {
@@ -72,12 +83,13 @@ const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect
 
           {obj.type === 'mesh' ? (
             <meshStandardMaterial 
-              color={isSelected ? "#008080" : "#ffffff"} 
-              transparent 
-              opacity={isSelected ? 0.9 : 0.7}
-              roughness={0.1}
-              metalness={0.8}
+              color={isSelected ? "#00e5ff" : getMaterialProps(obj.material?.name).color} 
+              transparent={getMaterialProps(obj.material?.name).transparent || isSelected} 
+              opacity={isSelected ? 0.8 : getMaterialProps(obj.material?.name).opacity}
+              roughness={getMaterialProps(obj.material?.name).roughness}
+              metalness={getMaterialProps(obj.material?.name).metalness}
               side={THREE.DoubleSide}
+              depthWrite={!getMaterialProps(obj.material?.name).transparent}
             />
           ) : obj.type === 'source' ? (
             <meshStandardMaterial 
@@ -377,14 +389,14 @@ const SceneContent: React.FC = () => {
          <VolumetricModes roomDims={roomInfo.dims} center={roomInfo.center} mode={selectedMode} />
       )}
 
-      <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 1.75} />
+      <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 1.75} enableRotate={useProjectStore.getState().viewMode === '3D'} />
       <ContactShadows position={[0, -0.01, 0]} opacity={0.4} scale={20} blur={2.4} far={4.5} />
     </>
   );
 };
 
 export const Viewport: React.FC = () => {
-  const { showRays, showHeatmap, showRoomModes, maxVisibleBounces, setVisualizationOptions, results, selectedBand, setSelectedBand } = useProjectStore();
+  const { showRays, showHeatmap, showRoomModes, maxVisibleBounces, setVisualizationOptions, results, selectedBand, setSelectedBand, viewMode, setViewMode } = useProjectStore();
   
   let minSpl = 0, maxSpl = 0;
   if (results.length > 0) {
@@ -398,11 +410,32 @@ export const Viewport: React.FC = () => {
   return (
     <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
       <Canvas shadows gl={{ antialias: true }}>
-        <PerspectiveCamera makeDefault position={[10, 10, 10]} fov={50} />
+        {viewMode === '3D' ? (
+          <PerspectiveCamera makeDefault position={[10, 10, 10]} fov={50} />
+        ) : (
+          <OrthographicCamera makeDefault position={[0, 20, 0]} zoom={40} near={-100} far={100} rotation={[-Math.PI / 2, 0, 0]} />
+        )}
         <color attach="background" args={['#0a0a0a']} />
         <fog attach="fog" args={['#0a0a0a', 10, 50]} />
         <SceneContent />
       </Canvas>
+
+      <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', gap: '5px', zIndex: 100 }}>
+        <button 
+          className={`button ${viewMode === '2D' ? 'primary' : ''}`} 
+          style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 'bold' }}
+          onClick={() => setViewMode('2D')}
+        >
+          2D Plan
+        </button>
+        <button 
+          className={`button ${viewMode === '3D' ? 'primary' : ''}`} 
+          style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 'bold' }}
+          onClick={() => setViewMode('3D')}
+        >
+          3D View
+        </button>
+      </div>
 
       {results.length > 0 && (
         <>

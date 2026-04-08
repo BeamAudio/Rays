@@ -95,8 +95,11 @@ export const LeftPanel: React.FC = () => {
         ) : (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-              <button className="button" onClick={() => addObject({ name: 'New Box', type: 'mesh', shape: 'box', position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] })}>
+              <button className="button" onClick={() => addObject({ name: 'New Box', type: 'mesh', shape: 'box', position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], material: { name: 'generic', absorption: Array(24).fill(0.1), scattering: 0.1, transmission: 0.8 } })}>
                 <Box size={14} /> Box
+              </button>
+              <button className="button" onClick={() => addObject({ name: 'New Sphere', type: 'mesh', shape: 'sphere', position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], material: { name: 'generic', absorption: Array(24).fill(0.1), scattering: 0.1, transmission: 0.8 } })}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', border: '1.5px solid currentColor' }} /> Sphere
               </button>
               <button className="button" onClick={() => addObject({ name: 'Source', type: 'source', shape: 'sphere', position: [0, 2, 0], rotation: [0, 0, 0], scale: [0.5, 0.5, 0.5], intensity: 100, sourceType: 'point', directivity: 'omni' })}>
                 <Speaker size={14} /> Source
@@ -104,8 +107,8 @@ export const LeftPanel: React.FC = () => {
               <button className="button" onClick={() => addObject({ name: 'Mic', type: 'receiver', shape: 'sphere', position: [0, 1.5, 2], rotation: [0, 0, 0], scale: [0.2, 0.2, 0.2] })}>
                 <Mic size={14} /> Receiver
               </button>
-              <button className="button" onClick={() => addObject({ name: 'Map Plane', type: 'plane', shape: 'plane', position: [0, 0.1, 0], rotation: [-Math.PI / 2, 0, 0], scale: [10, 10, 1], resolution: 2 })}>
-                <Layers size={14} /> Map Plane
+              <button className="button" style={{ gridColumn: 'span 2' }} onClick={() => addObject({ name: 'Map Plane', type: 'plane', shape: 'plane', position: [0, 0.1, 0], rotation: [-Math.PI / 2, 0, 0], scale: [10, 10, 1], resolution: 2 })}>
+                <Layers size={14} /> Analysis Plane
               </button>
             </div>
             
