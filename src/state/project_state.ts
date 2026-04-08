@@ -237,13 +237,21 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: 'beam-audio-project',
+      version: 1, // High-priority fix for Undo/Redo rehydration crash
       storage: createJSONStorage(() => idbStorage),
       partialize: (state) => ({
         objects: state.objects,
         showRays: state.showRays,
         showHeatmap: state.showHeatmap,
         maxVisibleBounces: state.maxVisibleBounces
-      } as any), // Don't persist volatile state like results or selection
+      } as any),
+      // Ensure defaults for new fields if migrate isn't enough
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          if (!Array.isArray(state.past)) state.past = [];
+          if (!Array.isArray(state.future)) state.future = [];
+        }
+      }
     }
   )
 );

@@ -171,20 +171,20 @@ export const Topbar: React.FC = () => {
           <button 
             className="button" 
             onClick={undo} 
-            disabled={past.length === 0} 
+            disabled={!past || past.length === 0} 
             title="Undo (Ctrl+Z)"
             style={{ padding: '6px' }}
           >
-            <RotateCcw size={16} opacity={past.length === 0 ? 0.3 : 1} />
+            <RotateCcw size={16} opacity={(!past || past.length === 0) ? 0.3 : 1} />
           </button>
           <button 
             className="button" 
             onClick={redo} 
-            disabled={future.length === 0} 
+            disabled={!future || future.length === 0} 
             title="Redo (Ctrl+Y)"
             style={{ padding: '6px' }}
           >
-            <RotateCw size={16} opacity={future.length === 0 ? 0.3 : 1} />
+            <RotateCw size={16} opacity={(!future || future.length === 0) ? 0.3 : 1} />
           </button>
         </div>
 
