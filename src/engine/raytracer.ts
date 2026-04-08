@@ -9,11 +9,53 @@ export interface ImpulseResponse {
   paths: { points: [number, number, number][], energy: number, time: number }[];
 }
 
+class ReceiverGrid {
+  private grid: Map<string, string[]> = new Map();
+  private cellSize: number = 2.0;
+
+  constructor(receivers: SceneObject[]) {
+    receivers.forEach(r => {
+      const cell = this.getCell(new THREE.Vector3(...r.position));
+      if (!this.grid.has(cell)) this.grid.set(cell, []);
+      this.grid.get(cell)!.push(r.id);
+    });
+  }
+
+  private getCell(pos: THREE.Vector3): string {
+    const x = Math.floor(pos.x / this.cellSize);
+    const y = Math.floor(pos.y / this.cellSize);
+    const z = Math.floor(pos.z / this.cellSize);
+    return `${x},${y},${z}`;
+  }
+
+  public getNearby(pos: THREE.Vector3): string[] {
+    const result: string[] = [];
+    const x = Math.floor(pos.x / this.cellSize);
+    const y = Math.floor(pos.y / this.cellSize);
+    const z = Math.floor(pos.z / this.cellSize);
+
+    // Check 3x3x3 neighborhood
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dz = -1; dz <= 1; dz++) {
+          const cell = `${x + dx},${y + dy},${z + dz}`;
+          const ids = this.grid.get(cell);
+          if (ids) result.push(...ids);
+        }
+      }
+    }
+    return result;
+  }
+}
+
 export class RayTracer {
   private bvh: BVH;
   private objects: Map<string, SceneObject>;
+  private recGrid: ReceiverGrid | null = null;
   private numRays: number;
   private maxBounces: number;
+  private totalPathsCollected: number = 0;
+  private MAX_PATHS = 500;
   private airAbsorption: number[]; // dB/m per octave band
   private freqs = [50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000];
 
@@ -60,29 +102,40 @@ export class RayTracer {
   public simulate(source: SceneObject, receivers: SceneObject[]): Map<string, ImpulseResponse> {
     const results = new Map<string, ImpulseResponse>();
     receivers.forEach(r => results.set(r.id, { times: [], energies: [], paths: [] }));
-
-    const origin = new THREE.Vector3(...source.position);
+    
+    this.recGrid = new ReceiverGrid(receivers);
+    this.totalPathsCollected = 0;
     
     // Phase 1: Image Source Method (Direct + 1st Order)
     this.runISM(source, receivers, results);
 
     // Phase 2: Stochastic Ray Tracing (Late Reverb)
-    // Reduce ray count since early energy is handled deterministically
     const lateRays = Math.max(1000, Math.floor(this.numRays / 2));
-    for (let i = 0; i < lateRays; i++) {
-      const direction = this.getRandomDirection(source);
-      const weights = this.getDirectivityWeights(source, direction);
-      
-      // If the ray is emitted into a "dead zone" (<-40dB), skip it for performance
-      if (weights.every(w => w < 0.0001)) continue;
-
-      this.traceRay({ origin, direction }, results, receivers, weights);
-    }
+    this.simulateBatch(source, receivers, results, 0, lateRays);
 
     return results;
   }
 
-  private runISM(source: SceneObject, receivers: SceneObject[], results: Map<string, ImpulseResponse>) {
+  public simulateBatch(
+    source: SceneObject, 
+    receivers: SceneObject[], 
+    results: Map<string, ImpulseResponse>,
+    startIdx: number,
+    count: number
+  ) {
+    if (!this.recGrid) this.recGrid = new ReceiverGrid(receivers);
+    const origin = new THREE.Vector3(...source.position);
+    const endIdx = Math.min(this.numRays, startIdx + count);
+
+    for (let i = startIdx; i < endIdx; i++) {
+        const direction = this.getRandomDirection(source);
+        const weights = this.getDirectivityWeights(source, direction);
+        if (weights.every(w => w < 0.0001)) continue;
+        this.traceRay({ origin, direction }, results, weights);
+    }
+  }
+
+  public runISM(source: SceneObject, receivers: SceneObject[], results: Map<string, ImpulseResponse>) {
     const sourcePos = new THREE.Vector3(...source.position);
     // Direct Sound (0th Order)
     receivers.forEach(receiver => {
@@ -216,7 +269,7 @@ export class RayTracer {
     }
   }
 
-  private traceRay(ray: Ray, results: Map<string, ImpulseResponse>, receivers: SceneObject[], initialWeights?: number[]) {
+  private traceRay(ray: Ray, results: Map<string, ImpulseResponse>, initialWeights?: number[]) {
     let currentRay = { origin: ray.origin.clone(), direction: ray.direction.clone() };
     let energy = initialWeights ? [...initialWeights] : Array(24).fill(1); // Energy per band
     let totalDist = 0;
@@ -228,8 +281,12 @@ export class RayTracer {
 
       const dist = hit.t;
 
-      // Check for receiver proximity BEFORE arriving at the wall
-      receivers.forEach(receiver => {
+      // Check for receiver proximity using spatial grid
+      const nearbyIds = this.recGrid!.getNearby(currentRay.origin);
+      nearbyIds.forEach(id => {
+        const receiver = this.objects.get(id);
+        if (!receiver) return;
+
         const recPos = new THREE.Vector3(...receiver.position);
         const pa = new THREE.Vector3().subVectors(recPos, currentRay.origin);
         const t = pa.dot(currentRay.direction); // projection distance along ray
@@ -245,17 +302,16 @@ export class RayTracer {
               
               const ir = results.get(receiver.id)!;
               ir.times.push(timeToReceiver);
-              
-              // We use the energy as it was at the start of this ray segment.
-              // In rigorous models, we'd attenuate for distance `t`, but the difference over < 30m is negligible for late reverb energy logs.
               ir.energies.push([...energy]);
               
-              if (ir.paths.length < 300) {
+              // Cap global path count to avoid memory bloat
+              if (this.totalPathsCollected < this.MAX_PATHS && ir.paths.length < 50) {
                  ir.paths.push({
                    points: [...history, [recPos.x, recPos.y, recPos.z]],
                    energy: energy[3],
                    time: timeToReceiver
                  });
+                 this.totalPathsCollected++;
               }
            }
         }

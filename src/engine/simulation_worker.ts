@@ -32,26 +32,51 @@ self.onmessage = (e: MessageEvent) => {
     // 2. Initialize RayTracer
     const tracer = new RayTracer(bvh, objects, environmentSettings);
 
-    self.postMessage({ type: 'PROGRESS', progress: 50 }); // Simulate might block worker, progress is manual for now
+    const resultsMap = new Map();
+    receivers.forEach((r: SceneObject) => resultsMap.set(r.id, { times: [], energies: [], paths: [] }));
+
+    // Phase 1: ISM (Direct + 1st Order)
+    tracer.runISM(sources[0], receivers, resultsMap);
+    self.postMessage({ type: 'PROGRESS', progress: 10 });
+
+    // Phase 2: Batched Stochastic Ray Tracing
+    const lateRays = Math.max(1000, Math.floor((environmentSettings?.rayCount || 25000) / 2));
+    const BATCH_SIZE = 2500;
     
-    // We simulate using the first source for now (or could aggregate all if RayTracer supported it)
-    const resultsMap = tracer.simulate(sources[0], receivers);
+    for (let i = 0; i < lateRays; i += BATCH_SIZE) {
+      tracer.simulateBatch(sources[0], receivers, resultsMap, i, BATCH_SIZE);
+      const progress = 10 + Math.floor((i / lateRays) * 85);
+      self.postMessage({ type: 'PROGRESS', progress });
+    }
 
-    self.postMessage({ type: 'PROGRESS', progress: 95 });
+    self.postMessage({ type: 'PROGRESS', progress: 98 });
 
+    // 3. Process & Sanitise Results
     const results: any[] = [];
     const rawIRs: any = {};
+    
+    // Primary receivers are those that aren't grid points (identified by lack of underscore in ID)
     resultsMap.forEach((ir, recId) => {
        const metrics = calculateMetrics({
           times: ir.times,
           energies: ir.energies
        });
+
+       const isGridPoint = recId.includes('_');
+
        results.push({
           receiverId: recId,
           metrics,
-          rayPaths: ir.paths
+          // Only send rayPaths for non-grid points to keep UI clean, 
+          // though RayTracer already caps them
+          rayPaths: isGridPoint ? [] : ir.paths
        });
-       rawIRs[recId] = ir;
+
+       // ONLY send raw impulse response for primary receivers (for auralization)
+       // This is the main "crash preventer" for large grids
+       if (!isGridPoint) {
+          rawIRs[recId] = ir;
+       }
     });
 
     self.postMessage({ type: 'DONE', results, rawIRs });
