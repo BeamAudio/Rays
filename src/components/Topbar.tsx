@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Play, Save, Loader2, FolderOpen, Layout, Globe, PenTool } from 'lucide-react';
+import { Play, Save, Loader2, FolderOpen, Layout, Globe, PenTool, RotateCcw, RotateCw } from 'lucide-react';
 import { useProjectStore } from '../state/project_state';
 import * as THREE from 'three';
 import SimulationWorker from '../engine/simulation_worker?worker';
@@ -9,7 +9,7 @@ export const Topbar: React.FC = () => {
   const { 
     objects, setSimulating, setSimulationResults, 
     isSimulating, simulationProgress, environmentSettings,
-    currentView, setCurrentView
+    currentView, setCurrentView, undo, redo, past, future
   } = useProjectStore();
   
   const loadRef = useRef<HTMLInputElement>(null);
@@ -166,9 +166,30 @@ export const Topbar: React.FC = () => {
         </button>
       </div>
 
-      <div className="topbar-actions" style={{ display: 'flex', gap: '10px', minWidth: '200px', justifyContent: 'flex-end' }}>
+      <div className="topbar-actions" style={{ display: 'flex', gap: '8px', minWidth: '240px', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: '4px', borderRight: '1px solid var(--border-color)', paddingRight: '10px', marginRight: '5px' }}>
+          <button 
+            className="button" 
+            onClick={undo} 
+            disabled={past.length === 0} 
+            title="Undo (Ctrl+Z)"
+            style={{ padding: '6px' }}
+          >
+            <RotateCcw size={16} opacity={past.length === 0 ? 0.3 : 1} />
+          </button>
+          <button 
+            className="button" 
+            onClick={redo} 
+            disabled={future.length === 0} 
+            title="Redo (Ctrl+Y)"
+            style={{ padding: '6px' }}
+          >
+            <RotateCw size={16} opacity={future.length === 0 ? 0.3 : 1} />
+          </button>
+        </div>
+
         <input type="file" ref={loadRef} style={{ display: 'none' }} accept=".json" onChange={handleLoadProject} />
-        <button className="button" onClick={() => loadRef.current?.click()} title="Load Project">
+        <button className="button" onClick={() => loadRef.current?.click()} title="Open Project">
           <FolderOpen size={16} />
         </button>
         <button className="button" onClick={handleSaveProject} title="Save Project">

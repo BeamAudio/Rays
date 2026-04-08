@@ -3,6 +3,7 @@ import { useProjectStore } from '../state/project_state';
 import type { AcousticMaterial } from '../state/project_state';
 import { DraggableWindow } from './DraggableWindow';
 import { DirectivityLibrary } from '../engine/directivity_library';
+import { NumericInput } from './NumericInput';
 
 export const RightPanel: React.FC = () => {
   const { 
@@ -25,32 +26,27 @@ export const RightPanel: React.FC = () => {
           <h3>Environment (ISO 9613-1)</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '10px' }}>
             <div className="prop-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label style={labelStyle}>Temp (°C)</label>
-                <input 
-                  type="number" 
-                  value={environmentSettings.temperature} 
-                  onChange={(e) => setEnvironmentSettings({ temperature: parseFloat(e.target.value) || 20 })}
-                  style={inputStyle} 
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>Humidity (%)</label>
-                <input 
-                  type="number" 
-                  value={environmentSettings.humidity} 
-                  onChange={(e) => setEnvironmentSettings({ humidity: parseFloat(e.target.value) || 50 })}
-                  style={inputStyle} 
-                />
-              </div>
+              <NumericInput 
+                label="Temp (°C)"
+                value={environmentSettings.temperature} 
+                onChange={(v) => setEnvironmentSettings({ temperature: v })}
+                step={0.5}
+              />
+              <NumericInput 
+                label="Humidity (%)"
+                value={environmentSettings.humidity} 
+                onChange={(v) => setEnvironmentSettings({ humidity: v })}
+                step={1}
+                min={0}
+                max={100}
+              />
             </div>
             <div className="prop-group">
-              <label style={labelStyle}>Pressure (kPa)</label>
-              <input 
-                type="number" 
+              <NumericInput 
+                label="Pressure (kPa)"
                 value={environmentSettings.pressure} 
-                onChange={(e) => setEnvironmentSettings({ pressure: parseFloat(e.target.value) || 101.325 })}
-                style={inputStyle} 
+                onChange={(v) => setEnvironmentSettings({ pressure: v })}
+                step={0.1}
               />
             </div>
           </div>
@@ -60,34 +56,30 @@ export const RightPanel: React.FC = () => {
           <h3>Simulation Engine</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '10px' }}>
             <div className="prop-group">
-              <label style={labelStyle}>Number of Rays</label>
-              <input 
-                type="number" 
-                step="1000"
+              <NumericInput 
+                label="Number of Rays"
+                step={1000}
                 value={environmentSettings.rayCount} 
-                onChange={(e) => setEnvironmentSettings({ rayCount: parseInt(e.target.value) || 25000 })}
-                style={inputStyle} 
+                onChange={(v) => setEnvironmentSettings({ rayCount: Math.round(v) })}
+                min={100}
+                max={200000}
               />
             </div>
             <div className="prop-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label style={labelStyle}>Max Bounces</label>
-                <input 
-                  type="number" 
-                  value={environmentSettings.maxBounces} 
-                  onChange={(e) => setEnvironmentSettings({ maxBounces: parseInt(e.target.value) || 30 })}
-                  style={inputStyle} 
-                />
-              </div>
-              <div>
-                <label style={labelStyle}>ISM Order</label>
-                <input 
-                  type="number" 
-                  value={environmentSettings.ismOrder} 
-                  onChange={(e) => setEnvironmentSettings({ ismOrder: parseInt(e.target.value) || 2 })}
-                  style={inputStyle} 
-                />
-              </div>
+              <NumericInput 
+                label="Max Bounces"
+                value={environmentSettings.maxBounces} 
+                onChange={(v) => setEnvironmentSettings({ maxBounces: Math.round(v) })}
+                min={1}
+                max={100}
+              />
+              <NumericInput 
+                label="ISM Order"
+                value={environmentSettings.ismOrder} 
+                onChange={(v) => setEnvironmentSettings({ ismOrder: Math.round(v) })}
+                min={0}
+                max={5}
+              />
             </div>
           </div>
         </div>
@@ -135,65 +127,58 @@ export const RightPanel: React.FC = () => {
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <div className="prop-group">
-              <label style={labelStyle}>Position</label>
-              <div style={{ display: 'flex', gap: '5px' }}>
+              <label style={labelStyle}>Position (m)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                 {['x', 'y', 'z'].map((axis, i) => (
-                  <div key={axis} style={{ flex: 1, position: 'relative' }}>
-                    <span style={axisLabelStyle}>{axis}</span>
-                    <input 
-                      type="number" 
-                      value={selectedObject.position[i].toFixed(2)} 
-                      onChange={(e) => {
-                        const newPos = [...selectedObject.position] as [number, number, number];
-                        newPos[i] = parseFloat(e.target.value) || 0;
-                        updateObject(selectedObject.id, { position: newPos });
-                      }} 
-                      style={inputStyle} 
-                    />
-                  </div>
+                  <NumericInput 
+                    key={axis}
+                    label={axis.toUpperCase()}
+                    value={selectedObject.position[i]} 
+                    onChange={(val) => {
+                      const newPos = [...selectedObject.position] as [number, number, number];
+                      newPos[i] = val;
+                      updateObject(selectedObject.id, { position: newPos });
+                    }} 
+                  />
                 ))}
               </div>
-            </div>
+          </div>
           
           <div className="prop-group">
               <label style={labelStyle}>Rotation (Euler deg)</label>
-              <div style={{ display: 'flex', gap: '5px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                 {['x', 'y', 'z'].map((axis, i) => (
-                  <div key={axis} style={{ flex: 1, position: 'relative' }}>
-                    <span style={axisLabelStyle}>{axis}</span>
-                    <input 
-                      type="number" 
-                      value={(selectedObject.rotation?.[i] * 180 / Math.PI || 0).toFixed(0)} 
-                      onChange={(e) => {
-                        const newRot = [...(selectedObject.rotation || [0,0,0])] as [number, number, number];
-                        newRot[i] = (parseFloat(e.target.value) || 0) * Math.PI / 180;
-                        updateObject(selectedObject.id, { rotation: newRot });
-                      }} 
-                      style={inputStyle} 
-                    />
-                  </div>
+                  <NumericInput 
+                    key={axis}
+                    label={axis.toUpperCase()}
+                    value={selectedObject.rotation?.[i] * 180 / Math.PI || 0} 
+                    onChange={(val) => {
+                      const newRot = [...(selectedObject.rotation || [0,0,0])] as [number, number, number];
+                      newRot[i] = val * Math.PI / 180;
+                      updateObject(selectedObject.id, { rotation: newRot });
+                    }} 
+                    step={1}
+                  />
                 ))}
               </div>
-            </div>
+          </div>
           
           {selectedObject.type !== 'source' && selectedObject.type !== 'receiver' && (
             <div className="prop-group">
-              <label style={labelStyle}>Scale</label>
-              <div style={{ display: 'flex', gap: '5px' }}>
+              <label style={labelStyle}>Scale (m)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
                 {['x', 'y', 'z'].map((axis, i) => (
-                  <div key={axis} style={{ flex: 1, position: 'relative' }}>
-                    <span style={axisLabelStyle}>{axis}</span>
-                    <input 
-                      type="number" 
-                      value={selectedObject.scale[i].toFixed(2)} 
-                      onChange={(e) => {
-                        const newScale = [...selectedObject.scale] as [number, number, number];
-                        newScale[i] = parseFloat(e.target.value) || 1;
-                        updateObject(selectedObject.id, { scale: newScale });
-                      }} 
-                      style={inputStyle} 
-                    />
-                  </div>
+                  <NumericInput 
+                    key={axis}
+                    label={axis.toUpperCase()}
+                    value={selectedObject.scale[i]} 
+                    onChange={(val) => {
+                      const newScale = [...selectedObject.scale] as [number, number, number];
+                      newScale[i] = val;
+                      updateObject(selectedObject.id, { scale: newScale });
+                    }} 
+                    min={0.01}
+                  />
                 ))}
               </div>
             </div>
@@ -226,39 +211,30 @@ export const RightPanel: React.FC = () => {
               </div>
 
               <div className="prop-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div>
-                  <label style={labelStyle}>Transmission</label>
-                  <input 
-                    type="number" 
-                    step="0.1" 
-                    min="0" 
-                    max="1" 
-                    value={selectedObject.material?.transmission || 0} 
-                    onChange={(e) => {
-                      const mat = { ...selectedObject.material! };
-                      mat.transmission = parseFloat(e.target.value);
-                      updateObject(selectedObject.id, { material: mat });
-                    }}
-                    style={inputStyle} 
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Density (dB/m)</label>
-                  <input 
-                    type="number" 
-                    value={selectedObject.material?.density || 0} 
-                    onChange={(e) => {
-                      const mat = { ...selectedObject.material! };
-                      mat.density = parseFloat(e.target.value);
-                      updateObject(selectedObject.id, { material: mat });
-                    }}
-                    style={inputStyle} 
-                  />
-                </div>
+                <NumericInput 
+                  label="Transmission"
+                  value={selectedObject.material?.transmission || 0} 
+                  onChange={(v) => {
+                    const mat = { ...selectedObject.material! };
+                    mat.transmission = v;
+                    updateObject(selectedObject.id, { material: mat });
+                  }}
+                  min={0}
+                  max={1}
+                />
+                <NumericInput 
+                  label="Density (dB/m)"
+                  value={selectedObject.material?.density || 0} 
+                  onChange={(v) => {
+                    const mat = { ...selectedObject.material! };
+                    mat.density = v;
+                    updateObject(selectedObject.id, { material: mat });
+                  }}
+                />
               </div>
               
               <div className="prop-group">
-                <label style={labelStyle}>1/3rd Octave Absorption</label>
+                <label style={labelStyle}>1/3rd Octave Absorption (0-1)</label>
                 <div style={{ 
                   display: 'grid', 
                   gridTemplateColumns: 'repeat(4, 1fr)', 
@@ -273,18 +249,18 @@ export const RightPanel: React.FC = () => {
                   {[50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000].map((freq, idx) => (
                     <div key={freq}>
                       <span style={{ fontSize: '8px', color: 'var(--text-secondary)' }}>{freq >= 1000 ? `${freq/1000}k` : freq}</span>
-                      <input 
-                        type="number" 
-                        step="0.05"
-                        min="0" max="1"
+                      <NumericInput
                         value={selectedObject.material?.absorption?.[idx] ?? 0.1}
-                        onChange={(e) => {
+                        onChange={(val) => {
                           const mat = { ...selectedObject.material! };
                           mat.absorption = [...(mat.absorption || Array(24).fill(0.1))];
-                          mat.absorption[idx] = parseFloat(e.target.value);
+                          mat.absorption[idx] = val;
                           updateObject(selectedObject.id, { material: mat });
                         }}
-                        style={{...inputStyle, padding: '2px 4px', height: '20px', fontSize: '10px'}}
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        style={{ padding: '2px 4px', height: '20px', fontSize: '9px' }}
                       />
                     </div>
                   ))}
@@ -328,12 +304,10 @@ export const RightPanel: React.FC = () => {
                 </div>
               </div>
               <div className="prop-group">
-                <label style={labelStyle}>Intensity (dB)</label>
-                <input 
-                  type="number" 
+                <NumericInput 
+                  label="Intensity (dB SPL @ 1m)"
                   value={selectedObject.intensity || 100} 
-                  onChange={(e) => updateObject(selectedObject.id, { intensity: parseFloat(e.target.value) })}
-                  style={inputStyle} 
+                  onChange={(v) => updateObject(selectedObject.id, { intensity: v })}
                 />
               </div>
             </>
@@ -341,12 +315,12 @@ export const RightPanel: React.FC = () => {
 
           {selectedObject.type === 'plane' && (
             <div className="prop-group">
-              <label style={labelStyle}>Resolution (pts/m)</label>
-              <input 
-                type="number" 
+              <NumericInput 
+                label="Resolution (points per meter)"
                 value={selectedObject.resolution || 2} 
-                onChange={(e) => updateObject(selectedObject.id, { resolution: parseFloat(e.target.value) })}
-                style={inputStyle} 
+                onChange={(v) => updateObject(selectedObject.id, { resolution: v })}
+                min={0.1}
+                max={20}
               />
             </div>
           )}
@@ -362,28 +336,6 @@ const labelStyle: React.CSSProperties = {
   marginBottom: '5px',
   display: 'block',
   textTransform: 'uppercase'
-};
-
-const axisLabelStyle: React.CSSProperties = {
-  position: 'absolute',
-  left: '4px',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  fontSize: '9px',
-  color: 'var(--accent-primary)',
-  fontWeight: 'bold',
-  pointerEvents: 'none'
-};
-
-const inputStyle: React.CSSProperties = {
-  background: 'var(--bg-primary)',
-  border: '1px solid var(--border-color)',
-  color: 'white',
-  padding: '6px 6px 6px 14px',
-  width: '100%',
-  fontSize: '11px',
-  borderRadius: '2px',
-  outline: 'none'
 };
 
 const selectStyle: React.CSSProperties = {

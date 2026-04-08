@@ -5,6 +5,7 @@ import { Trash2, Box, Speaker, Upload, Mic, Layers, Home, Archive } from 'lucide
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
 import { generateShoebox } from '../engine/room_generator';
+import { NumericInput } from './NumericInput';
 
 export const LeftPanel: React.FC = () => {
   const { 
@@ -74,18 +75,14 @@ export const LeftPanel: React.FC = () => {
             <h4 style={{ fontSize: '11px', marginBottom: '10px', color: 'var(--accent-primary)' }}>Shoebox Template</h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '15px' }}>
               {['width', 'depth', 'height'].map((key) => (
-                <div key={key}>
-                  <label style={{ fontSize: '9px', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>{key}</label>
-                  <input 
-                    type="number" 
-                    value={(roomConfig as any)[key]} 
-                    onChange={(e) => setRoomConfig({ ...roomConfig, [key]: parseFloat(e.target.value) || 0 })}
-                    style={{
-                      background: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'white',
-                      padding: '4px', width: '100%', fontSize: '11px', borderRadius: '2px', outline: 'none'
-                    }}
-                  />
-                </div>
+                <NumericInput 
+                  key={key}
+                  label={key.toUpperCase()}
+                  value={(roomConfig as any)[key]} 
+                  onChange={(v) => setRoomConfig({ ...roomConfig, [key]: v })}
+                  min={1}
+                  max={200}
+                />
               ))}
             </div>
             <button className="button primary" style={{ width: '100%' }} onClick={handleCreateRoom}>

@@ -96,6 +96,8 @@ export type Perspective = 'WORKSPACE' | 'MARKETPLACE' | 'DESIGNER';
 interface ProjectState {
   currentView: Perspective;
   viewMode: '2D' | '3D';
+  past: SceneObject[][];
+  future: SceneObject[][];
   environmentSettings: EnvironmentSettings;
   objects: SceneObject[];
   selectedId: string | null;
@@ -128,15 +130,19 @@ interface ProjectState {
   setAuralization: (settings: Partial<ProjectState['auralizationSettings']>) => void;
   setCurrentView: (view: Perspective) => void;
   setViewMode: (mode: '2D' | '3D') => void;
+  undo: () => void;
+  redo: () => void;
   installModel: (model: SpeakerModel) => void;
   uninstallModel: (id: string) => void;
 }
 
 export const useProjectStore = create<ProjectState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       currentView: 'WORKSPACE',
       viewMode: '3D',
+      past: [],
+      future: [],
       installedModels: [], // User's community/installed models
       environmentSettings: {
         temperature: 20,
@@ -162,20 +168,59 @@ export const useProjectStore = create<ProjectState>()(
       ambientNoiseSPL: Array(24).fill(30), // Default 30dB baseline
       auralizationSettings: { sampleUrl: 'https://www.soundjay.com/buttons/sounds/beep-01a.mp3', dry: 1.0, wet: 0.5, isPlaying: false },
       setEnvironmentSettings: (settings) => set((state) => ({ environmentSettings: { ...state.environmentSettings, ...settings } })),
+      setCurrentTime: (time) => set({ currentTime: time }),
+      
+      undo: () => {
+        const { past, future, objects } = get();
+        if (past.length === 0) return;
+        const previous = past[past.length - 1];
+        const newPast = past.slice(0, past.length - 1);
+        set({
+          past: newPast,
+          objects: previous,
+          future: [objects, ...future].slice(0, 50),
+          selectedId: null // Clear selection to avoid stale references
+        });
+      },
+
+      redo: () => {
+        const { past, future, objects } = get();
+        if (future.length === 0) return;
+        const next = future[0];
+        const newFuture = future.slice(1);
+        set({
+          past: [...past, objects].slice(-50),
+          objects: next,
+          future: newFuture,
+          selectedId: null
+        });
+      },
+
       addObject: (obj) => set((state) => ({
+        past: [...state.past, state.objects].slice(-50),
+        future: [],
         objects: [...state.objects, { ...obj, id: crypto.randomUUID() }]
       })),
       removeObject: (id) => set((state) => ({
+        past: [...state.past, state.objects].slice(-50),
+        future: [],
         objects: state.objects.filter((o) => o.id !== id),
         selectedId: state.selectedId === id ? null : state.selectedId
       })),
       setSelected: (id) => set({ selectedId: id }),
       setSelectedRayIndex: (index) => set({ selectedRayIndex: index }),
       setSelectedBand: (index) => set({ selectedBand: index }),
-      setCurrentTime: (time) => set({ currentTime: time }),
-      updateObject: (id, updates) => set((state) => ({
-        objects: state.objects.map((o) => (o.id === id ? { ...o, ...updates } : o))
-      })),
+      updateObject: (id, updates) => set((state) => {
+        // Only push to history if the update is significant (position/scale/rotation/material)
+        // This prevents excessive history entries for minor metadata changes
+        const isSignificant = 'position' in updates || 'scale' in updates || 'rotation' in updates || 'material' in updates || 'intensity' in updates || 'directivity' in updates;
+        
+        return {
+          past: isSignificant ? [...state.past, state.objects].slice(-50) : state.past,
+          future: isSignificant ? [] : state.future,
+          objects: state.objects.map((o) => (o.id === id ? { ...o, ...updates } : o))
+        };
+      }),
       setSimulationResults: (results) => set({ results, isSimulating: false, simulationProgress: 0 }),
       setSimulating: (isSimulating, progress) => set({ isSimulating, simulationProgress: progress || 0 }),
       setVisualizationOptions: (opts) => set((state) => ({ ...state, ...opts })),

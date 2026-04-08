@@ -4,6 +4,7 @@ import type { SpeakerModel, DirectivityPattern } from '../state/project_state';
 import { Save, PenTool, Activity, Share2, Code, Download } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { BalloonVisualizer } from './BalloonVisualizer';
+import { NumericInput } from './NumericInput';
 
 export const SpeakerDesigner: React.FC = () => {
   const { installModel, setCurrentView } = useProjectStore();
@@ -128,32 +129,68 @@ export const SpeakerDesigner: React.FC = () => {
           <h4 style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '15px' }}>Directivity Sculpting</h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
              <div className="control-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Horizontal Beamwidth</label>
-                   <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>{hSpread}°</span>
+                   <div style={{ width: '60px' }}>
+                     <NumericInput 
+                        value={hSpread} 
+                        onChange={setHSpread} 
+                        min={5} 
+                        max={180} 
+                        step={1}
+                        style={{ padding: '2px 4px', fontSize: '10px', textAlign: 'center' }}
+                     />
+                   </div>
                 </div>
                 <input type="range" min="10" max="180" step="10" value={hSpread} onChange={e => setHSpread(parseInt(e.target.value))} style={{ width: '100%', accentColor: 'var(--accent-primary)' }} />
              </div>
              <div className="control-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Vertical Beamwidth</label>
-                   <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>{vSpread}°</span>
+                   <div style={{ width: '60px' }}>
+                     <NumericInput 
+                        value={vSpread} 
+                        onChange={setVSpread} 
+                        min={5} 
+                        max={180} 
+                        step={1}
+                        style={{ padding: '2px 4px', fontSize: '10px', textAlign: 'center' }}
+                     />
+                   </div>
                 </div>
                 <input type="range" min="10" max="180" step="10" value={vSpread} onChange={e => setVSpread(parseInt(e.target.value))} style={{ width: '100%', accentColor: 'var(--accent-primary)' }} />
              </div>
              <div className="control-group" style={{ marginTop: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Tilt (Elevation)</label>
-                   <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>{tilt}°</span>
+                   <div style={{ width: '60px' }}>
+                     <NumericInput 
+                        value={tilt} 
+                        onChange={setTilt} 
+                        min={-90} 
+                        max={90} 
+                        step={1}
+                        style={{ padding: '2px 4px', fontSize: '10px', textAlign: 'center' }}
+                     />
+                   </div>
                 </div>
                 <input type="range" min="-90" max="90" step="5" value={tilt} onChange={e => setTilt(parseInt(e.target.value))} style={{ width: '100%', accentColor: 'var(--accent-primary)' }} />
              </div>
              <div className="control-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Pan (Azimuth)</label>
-                   <span style={{ fontSize: '11px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>{pan}°</span>
+                   <div style={{ width: '60px' }}>
+                     <NumericInput 
+                        value={pan} 
+                        onChange={setPan} 
+                        min={-180} 
+                        max={180} 
+                        step={1}
+                        style={{ padding: '2px 4px', fontSize: '10px', textAlign: 'center' }}
+                     />
+                   </div>
                 </div>
-                <input type="range" min="-90" max="90" step="5" value={pan} onChange={e => setPan(parseInt(e.target.value))} style={{ width: '100%', accentColor: 'var(--accent-primary)' }} />
+                <input type="range" min="-180" max="180" step="5" value={pan} onChange={e => setPan(parseInt(e.target.value))} style={{ width: '100%', accentColor: 'var(--accent-primary)' }} />
              </div>
           </div>
         </section>
