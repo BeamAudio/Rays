@@ -1,0 +1,188 @@
+import React, { useRef } from 'react';
+import { Play, Save, Loader2, FolderOpen, Layout, Globe, PenTool } from 'lucide-react';
+import { useProjectStore } from '../state/project_state';
+import * as THREE from 'three';
+import SimulationWorker from '../engine/simulation_worker?worker';
+import { auralizer } from '../engine/auralizer';
+
+export const Topbar: React.FC = () => {
+  const { 
+    objects, setSimulating, setSimulationResults, 
+    isSimulating, simulationProgress, environmentSettings,
+    currentView, setCurrentView
+  } = useProjectStore();
+  
+  const loadRef = useRef<HTMLInputElement>(null);
+
+  const handleSaveProject = () => {
+    const data = JSON.stringify(objects, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'beam_audio_project.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleLoadProject = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const loadedObjects = JSON.parse(event.target?.result as string);
+        useProjectStore.setState({ objects: loadedObjects, results: [], selectedId: null });
+      } catch (err) {
+        alert('Invalid project file.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleRunSimulation = () => {
+    if (isSimulating) return;
+
+    const sources = objects.filter(o => o.type === 'source');
+    const receivers = objects.filter(o => o.type === 'receiver');
+    const isPlanar = (o: any) => o.shape === 'plane' || o.type === 'plane' || (o.type === 'mesh' && o.scale?.[2] === 1 && Math.abs(o.scale[0] - 1) > 0.001);
+    const planes = objects.filter(isPlanar);
+    const meshes = objects.filter(o => o.type === 'mesh');
+
+    if (sources.length === 0 || (receivers.length === 0 && planes.length === 0)) {
+      alert('Please add at least one source and one receiver/plane.');
+      return;
+    }
+
+    setSimulating(true);
+
+    const simulationReceivers = [...receivers];
+    
+    planes.forEach(plane => {
+      const res = plane.resolution || 2;
+      const width = plane.scale[0];
+      const height = plane.scale[1];
+      const nx = Math.ceil(width * res);
+      const ny = Math.ceil(height * res);
+
+      const dummy = new THREE.Object3D();
+      dummy.position.set(plane.position[0], plane.position[1], plane.position[2]);
+      dummy.rotation.set(plane.rotation[0], plane.rotation[1], plane.rotation[2]);
+      dummy.scale.set(plane.scale[0], plane.scale[1], plane.scale[2]);
+      dummy.updateMatrixWorld();
+
+      for (let y = ny; y >= 0; y--) {
+        for (let x = 0; x <= nx; x++) {
+          const localPos = new THREE.Vector3(
+            nx > 0 ? (x / nx) - 0.5 : 0,
+            ny > 0 ? (y / ny) - 0.5 : 0,
+            0.05
+          );
+          localPos.applyMatrix4(dummy.matrixWorld);
+          simulationReceivers.push({
+            id: `${plane.id}_${x}_${y}`,
+            name: `Grid Point ${x},${y}`,
+            type: 'receiver',
+            shape: 'sphere',
+            position: [localPos.x, localPos.y, localPos.z],
+            rotation: [0, 0, 0],
+            scale: [0.1, 0.1, 0.1]
+          });
+        }
+      }
+    });
+
+    const worker = new SimulationWorker();
+    worker.postMessage({
+      objects,
+      sources,
+      receivers: simulationReceivers,
+      meshes,
+      environmentSettings
+    });
+
+    worker.onmessage = (e) => {
+      if (e.data.type === 'PROGRESS') {
+        setSimulating(true, e.data.progress);
+      } else if (e.data.type === 'DONE') {
+        const receiverMap = new Map(simulationReceivers.map(sr => [sr.id, sr]));
+        const processedResults = e.data.results.map((r: any) => {
+          const receiver = receiverMap.get(r.receiverId);
+          return {
+            ...r,
+            position: receiver?.position
+          };
+        });
+        setSimulationResults(processedResults);
+        
+        // Update auralizer with the primary receiver's IR
+        if (processedResults.length > 0) {
+          const primaryResult = processedResults.find((r: any) => !r.receiverId.includes('_')) || processedResults[0];
+          // We need the raw IR from the worker if we want high-fidelity, 
+          // but for now we can reconstruct from the metrics/etc if needed.
+          // Better: The worker should return the full IR object for auralization.
+          if (e.data.rawIRs && e.data.rawIRs[primaryResult.receiverId]) {
+            auralizer.updateIR(e.data.rawIRs[primaryResult.receiverId]);
+          }
+        }
+      } else if (e.data.type === 'ERROR') {
+        alert('Simulation Error: ' + e.data.error);
+        setSimulating(false);
+      }
+      
+      if (e.data.type === 'DONE' || e.data.type === 'ERROR') {
+        worker.terminate();
+      }
+    };
+  };
+
+  return (
+    <div className="topbar">
+      <div className="logo" style={{ minWidth: '200px' }}>
+        BEAM <span>RAYS</span>
+      </div>
+      
+      <div className="workspace-tabs" style={{ display: 'flex', gap: '5px', background: 'var(--bg-tertiary)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+        <button 
+          className={`button ${currentView === 'WORKSPACE' ? 'primary' : ''}`} 
+          style={{ gap: '8px', border: currentView === 'WORKSPACE' ? undefined : 'none' }}
+          onClick={() => setCurrentView('WORKSPACE')}
+        >
+          <Layout size={14} /> Workspace
+        </button>
+        <button 
+          className={`button ${currentView === 'MARKETPLACE' ? 'primary' : ''}`} 
+          style={{ gap: '8px', border: currentView === 'MARKETPLACE' ? undefined : 'none' }}
+          onClick={() => setCurrentView('MARKETPLACE')}
+        >
+          <Globe size={14} /> Marketplace
+        </button>
+        <button 
+          className={`button ${currentView === 'DESIGNER' ? 'primary' : ''}`} 
+          style={{ gap: '8px', border: currentView === 'DESIGNER' ? undefined : 'none' }}
+          onClick={() => setCurrentView('DESIGNER')}
+        >
+          <PenTool size={14} /> Designer
+        </button>
+      </div>
+
+      <div className="topbar-actions" style={{ display: 'flex', gap: '10px', minWidth: '200px', justifyContent: 'flex-end' }}>
+        <input type="file" ref={loadRef} style={{ display: 'none' }} accept=".json" onChange={handleLoadProject} />
+        <button className="button" onClick={() => loadRef.current?.click()} title="Load Project">
+          <FolderOpen size={16} />
+        </button>
+        <button className="button" onClick={handleSaveProject} title="Save Project">
+          <Save size={16} />
+        </button>
+        <button 
+          className="button primary" 
+          onClick={handleRunSimulation}
+          disabled={isSimulating}
+        >
+          {isSimulating ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+          {isSimulating ? `Calculating... ${simulationProgress}%` : 'Run Rays'}
+        </button>
+      </div>
+    </div>
+  );
+};

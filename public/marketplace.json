@@ -1,0 +1,38 @@
+[
+  {
+    "id": "official_omni",
+    "name": "Beam Omni Reference",
+    "manufacturer": "Beam Audio",
+    "type": "Point-Source",
+    "specs": "Laboratory-verified omnidirectional source. Flat response 50Hz-10kHz.",
+    "directivity": {
+      "name": "Omnidirectional",
+      "horizontal": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290, 300, 310, 320, 330, 340, 350],
+      "vertical": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180]
+    }
+  },
+  {
+    "id": "official_horn_90x60",
+    "name": "Beam H90/V60 Horn",
+    "manufacturer": "Beam Audio",
+    "type": "Point-Source",
+    "specs": "Asymmetric projection horn for controlled coverage applications.",
+    "directivity": {
+      "name": "90x60 Horn",
+      "horizontal": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290, 300, 310, 320, 330, 340, 350],
+      "vertical": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180]
+    }
+  },
+  {
+    "id": "official_ceiling_60",
+    "name": "Beam C-60 Ceiling",
+    "manufacturer": "Beam Audio",
+    "type": "Ceiling",
+    "specs": "Recessed ceiling speaker with 60° conical coverage.",
+    "directivity": {
+      "name": "60x60 Ceiling Speaker",
+      "horizontal": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 220, 230, 240, 250, 260, 270, 280, 290, 300, 310, 320, 330, 340, 350],
+      "vertical": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180]
+    }
+  }
+]
