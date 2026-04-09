@@ -24,31 +24,10 @@ export const BottomPanel: React.FC = () => {
     }
   }, [selectedId, results.length]);
 
-  if (!selectedResult) return null;
-
-
-
-  const handleToggleAudio = () => {
-    if (auralizationSettings.isPlaying) {
-      auralizer.stop();
-      setAuralization({ isPlaying: false });
-    } else {
-      auralizer.play();
-      setAuralization({ isPlaying: true });
-    }
-  };
-
-  const handleScrub = (e: any) => {
-    if (!scrubberRef.current) return;
-    const rect = scrubberRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min((e.clientX || e.touches?.[0].clientX) - rect.left, rect.width));
-    setCurrentTime((x / rect.width) * etcView.w + etcView.x);
-  };
-
   // ETC Drawing Logic (simplified for brevity, mirroring original style)
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !selectedResult.metrics.etc) return;
+    if (!canvas || !selectedResult || !selectedResult.metrics.etc) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -72,6 +51,25 @@ export const BottomPanel: React.FC = () => {
     });
     ctx.stroke();
   }, [selectedResult, etcView]);
+
+  if (!selectedResult) return null;
+
+  const handleToggleAudio = () => {
+    if (auralizationSettings.isPlaying) {
+      auralizer.stop();
+      setAuralization({ isPlaying: false });
+    } else {
+      auralizer.play();
+      setAuralization({ isPlaying: true });
+    }
+  };
+
+  const handleScrub = (e: any) => {
+    if (!scrubberRef.current) return;
+    const rect = scrubberRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min((e.clientX || e.touches?.[0].clientX) - rect.left, rect.width));
+    setCurrentTime((x / rect.width) * etcView.w + etcView.x);
+  };
 
   return (
     <DraggableWindow 
