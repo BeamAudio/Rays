@@ -1,4 +1,4 @@
-import type { DirectivityPattern } from '../state/project_state';
+import type { DirectivityPattern } from '../types';
 
 // Standard 1/3 Octave frequencies (24 bands)
 const FREQS = [50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000];

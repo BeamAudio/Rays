@@ -1,18 +1,4 @@
-export interface ImpulseResponse {
-  times: number[];
-  energies?: number[][]; // [timeIdx][octaveIdx]
-  pressures?: number[]; // [timeIdx]
-  paths?: { points: [number, number, number][], energy: number, time: number }[];
-}
-
-export interface AcousticMetrics {
-  t30: number[]; // Per octave
-  c80: number[];
-  d50: number[];
-  spl: number[];
-  sti: number; // Broadband STI (0-1)
-  etc: { time: number; energy: number }[];
-}
+import type { ImpulseResponse, AcousticMetrics } from '../types';
 
 export function calculateMetrics(ir: ImpulseResponse, ambientNoiseSPL: number[] = Array(24).fill(30)): AcousticMetrics {
   const numOctaves = 24;

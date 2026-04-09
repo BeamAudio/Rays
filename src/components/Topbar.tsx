@@ -118,9 +118,6 @@ export const Topbar: React.FC = () => {
         // Update auralizer with the primary receiver's IR
         if (processedResults.length > 0) {
           const primaryResult = processedResults.find((r: any) => !r.receiverId.includes('_')) || processedResults[0];
-          // We need the raw IR from the worker if we want high-fidelity, 
-          // but for now we can reconstruct from the metrics/etc if needed.
-          // Better: The worker should return the full IR object for auralization.
           if (e.data.rawIRs && e.data.rawIRs[primaryResult.receiverId]) {
             auralizer.updateIR(e.data.rawIRs[primaryResult.receiverId]);
           }

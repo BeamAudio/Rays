@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid, TransformControls, PerspectiveCamera, OrthographicCamera, ContactShadows, Line, Html } from '@react-three/drei';
 import { useProjectStore } from '../state/project_state';
-import type { SceneObject } from '../state/project_state';
+import type { SceneObject } from '../types';
+
 
 const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect: () => void }> = ({ obj, isSelected, onSelect }) => {
   const meshRef = useRef<THREE.Mesh>(null);

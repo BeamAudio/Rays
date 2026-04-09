@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useProjectStore } from '../state/project_state';
-import type { SpeakerModel } from '../state/project_state';
+import type { SpeakerModel } from '../types';
 import { Search, Download, Check, Info, ArrowUpRight } from 'lucide-react';
 import { DirectivityLibrary } from '../engine/directivity_library';
 
@@ -86,7 +86,7 @@ export const Marketplace: React.FC = () => {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
               <div style={{ padding: '4px 8px', background: 'rgba(0,229,255,0.1)', borderRadius: '6px', fontSize: '10px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>
-                {model.type.toUpperCase()}
+                {(model.type ?? 'Speaker').toUpperCase()}
               </div>
               <div style={{ color: 'var(--text-secondary)' }}><Info size={16} /></div>
             </div>

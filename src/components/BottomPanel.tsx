@@ -64,7 +64,7 @@ export const BottomPanel: React.FC = () => {
     ctx.beginPath();
     ctx.strokeStyle = '#00E5FF';
     ctx.lineWidth = 1.5;
-    selectedResult.metrics.etc.forEach((pt, i) => {
+    selectedResult.metrics.etc.forEach((pt: { time: number; energy: number }, i: number) => {
       if (i < etcView.x || i > etcView.x + etcView.w) return;
       const px = xToPx(i);
       const py = yToPx(-pt.energy);
@@ -191,7 +191,7 @@ export const BottomPanel: React.FC = () => {
         <div style={{ width: '300px', borderLeft: '1px solid var(--border-color)', padding: '15px' }}>
            <h4 style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '10px' }}>Octave Band Distribution</h4>
            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', height: '180px', overflowY: 'auto' }}>
-              {selectedResult.metrics.t30.map((t, i) => (
+              {selectedResult.metrics.t30.map((t: number, i: number) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '9px' }}>
                   <span style={{ width: '30px', color: 'var(--text-secondary)' }}>{getOctaveFreq(i)}</span>
                   <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px' }}>

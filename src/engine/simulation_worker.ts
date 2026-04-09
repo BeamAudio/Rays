@@ -1,7 +1,7 @@
 import { calculateMetrics } from './metrics';
 import { RayTracer } from './raytracer';
 import { BVH } from './bvh';
-import type { SceneObject } from '../state/project_state';
+import type { SceneObject } from '../types';
 
 self.onmessage = (e: MessageEvent) => {
   const { objects, sources, receivers, environmentSettings } = e.data;

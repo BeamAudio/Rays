@@ -1,10 +1,4 @@
-import type { SceneObject } from '../state/project_state';
-
-export interface NumericalImpulseResponse {
-  times: number[];
-  pressures: number[];
-  paths?: any[]; // Keep for compatibility with UI, though FDTD is a field, not paths
-}
+import type { SceneObject, NumericalImpulseResponse } from '../types';
 
 export class FDTDSolver {
   private dx: number = 0.2; // 20cm voxel resolution

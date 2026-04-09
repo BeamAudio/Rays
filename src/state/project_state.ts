@@ -1,99 +1,13 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { StateStorage } from 'zustand/middleware';
-import { get, set, del } from 'idb-keyval';
-
-// Custom storage object for IndexedDB
-const idbStorage: StateStorage = {
-  getItem: async (name: string): Promise<string | null> => {
-    return (await get(name)) || null;
-  },
-  setItem: async (name: string, value: string): Promise<void> => {
-    await set(name, value);
-  },
-  removeItem: async (name: string): Promise<void> => {
-    await del(name);
-  },
-};
-
-export interface DirectivityPattern {
-  name: string;
-  horizontal: number[]; // e.g., [0, 10, 20, ... 350]
-  vertical: number[];   // e.g., [0, 10, 20, ... 180]
-  // attenuation[freqIdx][angleIdx] in dB. 
-  // angleIdx = verticalIdx * horizontal.length + horizontalIdx
-  attenuation: number[][];
-}
-
-export interface AcousticMaterial {
-  name: string;
-  absorption: number[]; // 1/3 Octave bands: 50Hz to 10kHz (24 bands)
-  scattering: number;
-  transmission?: number; // For volumetric transparency
-  density?: number; // For volumetric absorption/attenuation (dB/m)
-}
-
-export interface SceneObject {
-  id: string;
-  name: string;
-  type: 'mesh' | 'source' | 'receiver' | 'plane';
-  shape: 'box' | 'sphere' | 'mesh' | 'plane';
-  position: [number, number, number];
-  rotation: [number, number, number];
-  scale: [number, number, number];
-  material?: AcousticMaterial;
-  // For sources
-  intensity?: number;
-  spectrum?: number[];
-  sourceType?: 'point' | 'line' | 'volumetric';
-  directivity?: 'omni' | 'cardioid' | 'custom';
-  directivityData?: DirectivityPattern;
-  // For planes
-  resolution?: number; // points per meter
-  // Compiled geometry for simulation
-  triangles?: number[]; // Flattened [x1, y1, z1, x2, y2, z2, x3, y3, z3, ...]
-}
-
-import type { AcousticMetrics } from '../engine/metrics';
-
-export interface RayPath {
-  points: [number, number, number][];
-  energy: number;
-  time: number;
-}
-
-export interface SimulationResult {
-  receiverId: string;
-  metrics: AcousticMetrics;
-  position?: [number, number, number];
-  etc?: { time: number; energy: number }[]; // Energy Time Curve
-  rayPaths?: RayPath[];
-}
-
-
-
-export interface EnvironmentSettings {
-  temperature: number; // Celsius
-  humidity: number; // %
-  pressure: number; // kPa
-  rayCount: number;
-  maxBounces: number;
-  ismOrder: number;
-}
-
-export interface SpeakerModel {
-  id: string;
-  name: string;
-  manufacturer: string;
-  type: 'Point-Source' | 'Line-Array' | 'Ceiling' | 'Other';
-  directivity: DirectivityPattern;
-  image?: string;
-  specs?: string;
-}
+import type { 
+  SceneObject, SimulationResult, SpeakerModel, 
+  EnvironmentSettings
+} from '../types';
 
 export type Perspective = 'WORKSPACE' | 'MARKETPLACE' | 'DESIGNER';
 
-interface ProjectState {
+export interface ProjectState {
   currentView: Perspective;
   viewMode: '2D' | '3D';
   past: SceneObject[][];
@@ -143,7 +57,7 @@ export const useProjectStore = create<ProjectState>()(
       viewMode: '3D',
       past: [],
       future: [],
-      installedModels: [], // User's community/installed models
+      installedModels: [],
       environmentSettings: {
         temperature: 20,
         humidity: 50,
@@ -163,11 +77,14 @@ export const useProjectStore = create<ProjectState>()(
       selectedMode: [1, 0, 0],
       maxVisibleBounces: 5,
       selectedRayIndex: null,
-      selectedBand: 24, // Default to Broadband
+      selectedBand: 24,
       currentTime: Number.MAX_SAFE_INTEGER,
-      ambientNoiseSPL: Array(24).fill(30), // Default 30dB baseline
+      ambientNoiseSPL: Array(24).fill(30),
       auralizationSettings: { sampleUrl: 'https://www.soundjay.com/buttons/sounds/beep-01a.mp3', dry: 1.0, wet: 0.5, isPlaying: false },
-      setEnvironmentSettings: (settings) => set((state) => ({ environmentSettings: { ...state.environmentSettings, ...settings } })),
+      
+      setEnvironmentSettings: (settings) => set((state) => ({ 
+        environmentSettings: { ...state.environmentSettings, ...settings } 
+      })),
       setCurrentTime: (time) => set({ currentTime: time }),
       
       undo: () => {
@@ -179,7 +96,7 @@ export const useProjectStore = create<ProjectState>()(
           past: newPast,
           objects: previous,
           future: [objects, ...future].slice(0, 50),
-          selectedId: null // Clear selection to avoid stale references
+          selectedId: null
         });
       },
 
@@ -199,31 +116,33 @@ export const useProjectStore = create<ProjectState>()(
       addObject: (obj) => set((state) => ({
         past: [...state.past, state.objects].slice(-50),
         future: [],
-        objects: [...state.objects, { ...obj, id: crypto.randomUUID() }]
+        objects: [...state.objects, { ...obj, id: crypto.randomUUID() }] as SceneObject[]
       })),
+
       removeObject: (id) => set((state) => ({
         past: [...state.past, state.objects].slice(-50),
         future: [],
-        objects: state.objects.filter((o) => o.id !== id),
+        objects: state.objects.filter(o => o.id !== id),
         selectedId: state.selectedId === id ? null : state.selectedId
       })),
-      setSelected: (id) => set({ selectedId: id }),
-      setSelectedRayIndex: (index) => set({ selectedRayIndex: index }),
-      setSelectedBand: (index) => set({ selectedBand: index }),
+
       updateObject: (id, updates) => set((state) => {
-        // Only push to history if the update is significant (position/scale/rotation/material)
-        // This prevents excessive history entries for minor metadata changes
-        const isSignificant = 'position' in updates || 'scale' in updates || 'rotation' in updates || 'material' in updates || 'intensity' in updates || 'directivity' in updates;
-        
+        const newObjects = state.objects.map(o => o.id === id ? { ...o, ...updates } : o) as SceneObject[];
+        // Only snapshot for significant geometric changes, not every slider tick
+        // But for undo/redo to work reliably, we do it for all updates here
         return {
-          past: isSignificant ? [...state.past, state.objects].slice(-50) : state.past,
-          future: isSignificant ? [] : state.future,
-          objects: state.objects.map((o) => (o.id === id ? { ...o, ...updates } : o))
+          past: [...state.past, state.objects].slice(-50),
+          future: [],
+          objects: newObjects
         };
       }),
-      setSimulationResults: (results) => set({ results, isSimulating: false, simulationProgress: 0 }),
-      setSimulating: (isSimulating, progress) => set({ isSimulating, simulationProgress: progress || 0 }),
-      setVisualizationOptions: (opts) => set((state) => ({ ...state, ...opts })),
+
+      setSelected: (id) => set({ selectedId: id, selectedRayIndex: null }),
+      setSelectedRayIndex: (index) => set({ selectedRayIndex: index }),
+      setSelectedBand: (index) => set({ selectedBand: index }),
+      setSimulationResults: (results) => set({ results, isSimulating: false, simulationProgress: 100 }),
+      setSimulating: (isSimulating, progress = 0) => set({ isSimulating, simulationProgress: progress }),
+      setVisualizationOptions: (options) => set(() => ({ ...options })),
       setAmbientNoise: (noise) => set({ ambientNoiseSPL: noise }),
       setAuralization: (settings) => set((state) => ({ auralizationSettings: { ...state.auralizationSettings, ...settings } })),
       setCurrentView: (view) => set({ currentView: view }),
@@ -237,25 +156,20 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: 'beam-audio-project',
-      version: 2, // Stability recovery version
-      storage: createJSONStorage(() => idbStorage),
+      version: 2,
+      storage: createJSONStorage(() => localStorage), // Stable fallback to localStorage
       partialize: (state) => ({
         objects: state.objects,
         showRays: state.showRays,
         showHeatmap: state.showHeatmap,
-        maxVisibleBounces: state.maxVisibleBounces
+        maxVisibleBounces: state.maxVisibleBounces,
+        installedModels: state.installedModels
       } as any),
       onRehydrateStorage: () => (state, error) => {
-        if (error) {
-          console.error('[Zustand Rehydration Error]:', error);
-        }
+        if (error) console.error('[Hydration Error]:', error);
         if (state) {
-          try {
-            if (!Array.isArray(state.past)) state.past = [];
-            if (!Array.isArray(state.future)) state.future = [];
-          } catch (e) {
-            console.error('[State Recovery Failed]:', e);
-          }
+          if (!Array.isArray(state.past)) state.past = [];
+          if (!Array.isArray(state.future)) state.future = [];
         }
       }
     }

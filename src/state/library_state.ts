@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { StateStorage } from 'zustand/middleware';
 import { get, set, del } from 'idb-keyval';
-import type { SceneObject } from './project_state';
+import type { SceneObject } from '../types';
 
 // Custom storage object for IndexedDB
 const idbStorage: StateStorage = {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useProjectStore } from '../state/project_state';
-import type { SpeakerModel, DirectivityPattern } from '../state/project_state';
+import type { SpeakerModel, DirectivityPattern } from '../types';
+
 import { Save, PenTool, Activity, Share2, Code, Download } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { BalloonVisualizer } from './BalloonVisualizer';

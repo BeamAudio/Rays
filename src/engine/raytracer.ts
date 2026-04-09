@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { BVH } from './bvh';
 import type { Ray } from './bvh';
-import type { SceneObject, EnvironmentSettings } from '../state/project_state';
+import type { SceneObject, EnvironmentSettings } from '../types';
 
-export interface ImpulseResponse {
+// Internal raytracer IR structure — energies and paths are always present
+interface RayImpulseResponse {
   times: number[];
-  energies: number[][]; // [timeIdx][octaveIdx]
+  energies: number[][];
   paths: { points: [number, number, number][], energy: number, time: number }[];
 }
 
@@ -99,8 +100,8 @@ export class RayTracer {
     });
   }
 
-  public simulate(source: SceneObject, receivers: SceneObject[]): Map<string, ImpulseResponse> {
-    const results = new Map<string, ImpulseResponse>();
+  public simulate(source: SceneObject, receivers: SceneObject[]): Map<string, RayImpulseResponse> {
+    const results = new Map<string, RayImpulseResponse>();
     receivers.forEach(r => results.set(r.id, { times: [], energies: [], paths: [] }));
     
     this.recGrid = new ReceiverGrid(receivers);
@@ -119,7 +120,7 @@ export class RayTracer {
   public simulateBatch(
     source: SceneObject, 
     receivers: SceneObject[], 
-    results: Map<string, ImpulseResponse>,
+    results: Map<string, RayImpulseResponse>,
     startIdx: number,
     count: number
   ) {
@@ -135,7 +136,7 @@ export class RayTracer {
     }
   }
 
-  public runISM(source: SceneObject, receivers: SceneObject[], results: Map<string, ImpulseResponse>) {
+  public runISM(source: SceneObject, receivers: SceneObject[], results: Map<string, RayImpulseResponse>) {
     const sourcePos = new THREE.Vector3(...source.position);
     // Direct Sound (0th Order)
     receivers.forEach(receiver => {
@@ -269,7 +270,7 @@ export class RayTracer {
     }
   }
 
-  private traceRay(ray: Ray, results: Map<string, ImpulseResponse>, initialWeights?: number[]) {
+  private traceRay(ray: Ray, results: Map<string, RayImpulseResponse>, initialWeights?: number[]) {
     let currentRay = { origin: ray.origin.clone(), direction: ray.direction.clone() };
     let energy = initialWeights ? [...initialWeights] : Array(24).fill(1); // Energy per band
     let totalDist = 0;

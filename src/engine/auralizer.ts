@@ -1,16 +1,23 @@
-import type { ImpulseResponse } from './raytracer';
+import type { ImpulseResponse } from '../types';
 
 export class Auralizer {
-  private context: AudioContext;
-  private convolver: ConvolverNode;
-  private dryGain: GainNode;
-  private wetGain: GainNode;
-  private limiter: DynamicsCompressorNode;
+  private context!: AudioContext;
+  private convolver!: ConvolverNode;
+  private dryGain!: GainNode;
+  private wetGain!: GainNode;
+  private limiter!: DynamicsCompressorNode;
   private source: AudioBufferSourceNode | null = null;
   private sampleBuffer: AudioBuffer | null = null;
   private isRunning: boolean = false;
 
   constructor() {
+    // Lazy initialization to avoid SSR/Build crashes
+  }
+
+  private ensureContext() {
+    if (this.context) return;
+    if (typeof window === 'undefined') return;
+
     this.context = new (window.AudioContext || (window as any).webkitAudioContext)();
     this.convolver = this.context.createConvolver();
     this.dryGain = this.context.createGain();
@@ -39,12 +46,18 @@ export class Auralizer {
   }
 
   public async setSampleFromUrl(url: string) {
+    this.ensureContext();
+    if (!this.context) return;
+
     const response = await fetch(url);
     const arrayBuffer = await response.arrayBuffer();
     this.sampleBuffer = await this.context.decodeAudioData(arrayBuffer);
   }
 
   public updateIR(ir: ImpulseResponse) {
+    this.ensureContext();
+    if (!this.context) return;
+
     const sr = this.context.sampleRate;
     const maxTime = Math.max(...ir.times, 0.5) + 0.5; // End tail
     const length = Math.ceil(maxTime * sr);
@@ -57,7 +70,7 @@ export class Auralizer {
     
     for (let i = 0; i < ir.times.length; i++) {
       const time = ir.times[i];
-      const energies = ir.energies[i]; // 24 octave bands
+      const energies = ir.energies?.[i] ?? []; // 24 octave bands
       const idx = Math.floor(time * sr);
       
       if (idx < length) {
@@ -90,12 +103,15 @@ export class Auralizer {
   }
 
   public setMix(dry: number, wet: number) {
+    this.ensureContext();
+    if (!this.context) return;
     this.dryGain.gain.setTargetAtTime(dry, this.context.currentTime, 0.05);
     this.wetGain.gain.setTargetAtTime(wet, this.context.currentTime, 0.05);
   }
 
   public play() {
-    if (!this.sampleBuffer || this.isRunning) return;
+    this.ensureContext();
+    if (!this.context || !this.sampleBuffer || this.isRunning) return;
     
     if (this.context.state === 'suspended') {
       this.context.resume();
