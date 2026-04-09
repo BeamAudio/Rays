@@ -237,7 +237,7 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: 'beam-audio-project',
-      version: 1, // High-priority fix for Undo/Redo rehydration crash
+      version: 2, // Stability recovery version
       storage: createJSONStorage(() => idbStorage),
       partialize: (state) => ({
         objects: state.objects,
@@ -245,11 +245,17 @@ export const useProjectStore = create<ProjectState>()(
         showHeatmap: state.showHeatmap,
         maxVisibleBounces: state.maxVisibleBounces
       } as any),
-      // Ensure defaults for new fields if migrate isn't enough
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error('[Zustand Rehydration Error]:', error);
+        }
         if (state) {
-          if (!Array.isArray(state.past)) state.past = [];
-          if (!Array.isArray(state.future)) state.future = [];
+          try {
+            if (!Array.isArray(state.past)) state.past = [];
+            if (!Array.isArray(state.future)) state.future = [];
+          } catch (e) {
+            console.error('[State Recovery Failed]:', e);
+          }
         }
       }
     }
