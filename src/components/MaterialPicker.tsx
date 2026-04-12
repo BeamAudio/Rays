@@ -6,6 +6,19 @@ interface MaterialPickerProps {
   currentMaterial?: string;
 }
 
+const getCategoryColor = (category?: string) => {
+  switch (category?.toLowerCase()) {
+    case 'masonry': return "#888888";
+    case 'wood': return "#8b5a2b";
+    case 'flooring': return "#602020";
+    case 'glass': return "#aaddff";
+    case 'acoustic treatment': return "#22cc88";
+    case 'fabric': return "#aa4488";
+    case 'people': return "#ffcc88";
+    default: return "#ffffff";
+  }
+};
+
 export const MaterialPicker: React.FC<MaterialPickerProps> = ({ onSelect, currentMaterial }) => {
   const [materials, setMaterials] = useState<AcousticMaterial[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -13,7 +26,7 @@ export const MaterialPicker: React.FC<MaterialPickerProps> = ({ onSelect, curren
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch('/data/materials.json')
+    fetch(`${import.meta.env.BASE_URL}data/materials.json`)
       .then(res => res.json())
       .then(data => setMaterials(data))
       .catch(err => console.error("Error loading materials:", err));
@@ -34,6 +47,16 @@ export const MaterialPicker: React.FC<MaterialPickerProps> = ({ onSelect, curren
     m.category?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const categories = Array.from(new Set(filteredMaterials.map(m => m.category || 'Other'))).sort();
+
+  const MiniSparkline = ({ data }: { data: number[] }) => (
+    <div style={{ display: 'flex', gap: '1px', height: '12px', alignItems: 'flex-end', width: '40px' }}>
+      {data.filter((_, i) => i % 4 === 0).map((v, i) => (
+        <div key={i} style={{ flex: 1, background: 'var(--accent-primary)', height: `${v * 100}%`, minHeight: '1px', opacity: 0.5 }} />
+      ))}
+    </div>
+  );
+
   return (
     <div style={{ position: 'relative', width: '100%' }} ref={dropdownRef}>
       <div 
@@ -48,11 +71,16 @@ export const MaterialPicker: React.FC<MaterialPickerProps> = ({ onSelect, curren
           cursor: 'pointer',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          transition: 'border-color 0.2s'
         }}
+        onMouseOver={e => e.currentTarget.style.borderColor = 'var(--accent-primary)'}
+        onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border-color)'}
       >
-        <span>{currentMaterial || "Select Material..."}</span>
-        <span>{isOpen ? '▲' : '▼'}</span>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {currentMaterial || "Select Material..."}
+        </span>
+        <span style={{ fontSize: '8px', opacity: 0.5 }}>{isOpen ? '▲' : '▼'}</span>
       </div>
 
       {isOpen && (
@@ -61,57 +89,85 @@ export const MaterialPicker: React.FC<MaterialPickerProps> = ({ onSelect, curren
           top: '100%',
           left: 0,
           right: 0,
-          background: '#1a1a1a',
+          background: '#111418',
           border: '1px solid var(--accent-primary)',
           borderRadius: '4px',
           marginTop: '4px',
           zIndex: 1000,
-          maxHeight: '300px',
+          maxHeight: '400px',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+          boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
+          overflow: 'hidden'
         }}>
-          <input 
-            autoFocus
-            type="text"
-            placeholder="Search materials..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              borderBottom: '1px solid var(--border-color)',
-              color: 'white',
-              padding: '10px',
-              fontSize: '11px',
-              outline: 'none'
-            }}
-          />
-          <div style={{ overflowY: 'auto', flex: 1 }}>
-            {filteredMaterials.map((m, idx) => (
-              <div 
-                key={idx}
-                onClick={() => {
-                  onSelect(m);
-                  setIsOpen(false);
-                  setSearch('');
-                }}
+          <div style={{ padding: '8px', background: '#0a0c0e', borderBottom: '1px solid #222' }}>
+            <input 
+                autoFocus
+                type="text"
+                placeholder="Search masonry, wood, fabrics..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 style={{
-                  padding: '8px 12px',
-                  cursor: 'pointer',
-                  borderBottom: '1px solid #2a2a2a',
-                  display: 'flex',
-                  flexDirection: 'column'
+                background: '#1a1d21',
+                border: '1px solid #333',
+                borderRadius: '4px',
+                color: 'white',
+                padding: '6px 10px',
+                fontSize: '11px',
+                outline: 'none',
+                width: '100%'
                 }}
-                className="material-item"
-              >
-                <div style={{ fontSize: '11px', fontWeight: 'bold' }}>{m.name}</div>
-                <div style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>{m.category}</div>
+            />
+          </div>
+          
+          <div style={{ overflowY: 'auto', flex: 1, padding: '4px' }}>
+            {categories.map(cat => (
+              <div key={cat}>
+                <div style={{ 
+                    fontSize: '9px', 
+                    color: 'var(--text-secondary)', 
+                    textTransform: 'uppercase', 
+                    padding: '8px 8px 4px 8px',
+                    letterSpacing: '0.05em',
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: getCategoryColor(cat) }} />
+                  {cat}
+                </div>
+                {filteredMaterials.filter(m => (m.category || 'Other') === cat).map((m, idx) => (
+                  <div 
+                    key={idx}
+                    onClick={() => {
+                      onSelect(m);
+                      setIsOpen(false);
+                      setSearch('');
+                    }}
+                    style={{
+                      padding: '8px 12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderRadius: '4px',
+                      margin: '1px 4px'
+                    }}
+                    className="material-item"
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <div style={{ fontSize: '11px' }}>{m.name}</div>
+                        <div style={{ fontSize: '8px', color: 'var(--text-secondary)' }}>α_avg: {(m.absorption.reduce((a,b)=>a+b, 0) / 24).toFixed(2)}</div>
+                    </div>
+                    <MiniSparkline data={m.absorption} />
+                  </div>
+                ))}
               </div>
             ))}
             {filteredMaterials.length === 0 && (
-              <div style={{ padding: '20px', textAlign: 'center', fontSize: '11px', color: 'var(--text-secondary)' }}>
-                No materials found
+              <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                No materials matching "{search}"
               </div>
             )}
           </div>
@@ -119,7 +175,11 @@ export const MaterialPicker: React.FC<MaterialPickerProps> = ({ onSelect, curren
       )}
       <style>{`
         .material-item:hover {
-          background: var(--accent-primary);
+          background: rgba(0, 229, 255, 0.1) !important;
+          color: var(--accent-primary);
+        }
+        .material-item:hover div {
+          color: inherit !important;
         }
       `}</style>
     </div>

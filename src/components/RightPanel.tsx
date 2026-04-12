@@ -7,6 +7,26 @@ import { DirectivityLibrary } from '../engine/directivity_library';
 import { NumericInput } from './NumericInput';
 import { MaterialPicker } from './MaterialPicker';
 
+const labelStyle: React.CSSProperties = {
+  fontSize: '11px',
+  color: 'var(--text-secondary)',
+  marginBottom: '5px',
+  display: 'block',
+  textTransform: 'uppercase'
+};
+
+const selectStyle: React.CSSProperties = {
+  background: 'var(--bg-primary)',
+  border: '1px solid var(--border-color)',
+  color: 'white',
+  padding: '6px',
+  width: '100%',
+  fontSize: '11px',
+  borderRadius: '2px',
+  outline: 'none',
+  cursor: 'pointer'
+};
+
 export const RightPanel: React.FC = () => {
   const { 
     objects, selectedId, updateObject,
@@ -322,24 +342,4 @@ export const RightPanel: React.FC = () => {
       </div>
     </DraggableWindow>
   );
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: '11px',
-  color: 'var(--text-secondary)',
-  marginBottom: '5px',
-  display: 'block',
-  textTransform: 'uppercase'
-};
-
-const selectStyle: React.CSSProperties = {
-  background: 'var(--bg-primary)',
-  border: '1px solid var(--border-color)',
-  color: 'white',
-  padding: '6px',
-  width: '100%',
-  fontSize: '11px',
-  borderRadius: '2px',
-  outline: 'none',
-  cursor: 'pointer'
 };

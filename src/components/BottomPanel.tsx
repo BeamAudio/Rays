@@ -6,6 +6,39 @@ import { auralizer } from '../engine/auralizer';
 
 type Tab = 'summary' | 'signal' | 'distribution';
 
+const TabButton: React.FC<{ active: boolean, onClick: () => void, icon: React.ReactNode, label: string }> = ({ active, onClick, icon, label }) => (
+    <button 
+        onClick={onClick}
+        style={{ 
+            display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', background: 'none', border: 'none', 
+            borderBottom: active ? '2px solid #00E5FF' : '2px solid transparent',
+            color: active ? '#00E5FF' : '#64748B', fontSize: '11px', fontWeight: active ? 'bold' : 'normal',
+            cursor: 'pointer', transition: 'all 0.2s'
+        }}
+    >
+        {icon} {label}
+    </button>
+);
+
+const MetricCard: React.FC<{ label: string, value: string, unit: string, status: string }> = ({ label, value, unit, status }) => (
+    <div style={{ background: '#0F172A', border: '1px solid #1A1F26', padding: '15px', borderRadius: '8px' }}>
+        <div style={{ fontSize: '9px', textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.05em', marginBottom: '8px' }}>{label}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+            <span style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-brand)', color: '#F8FAFC' }}>{value}</span>
+            <span style={{ fontSize: '12px', color: '#64748B' }}>{unit}</span>
+        </div>
+        <div style={{ marginTop: '8px', fontSize: '9px', color: status === 'Excellent' || status === 'Good' ? '#4ADE80' : '#00E5FF', background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
+            STATUS: {status}
+        </div>
+    </div>
+);
+
+const getOctaveFreq = (i: number) => {
+  const freqs = [50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000];
+  const f = freqs[i];
+  return f >= 1000 ? `${f/1000}k` : f;
+};
+
 export const BottomPanel: React.FC = () => {
   const { 
     results, selectedId,
@@ -208,7 +241,7 @@ export const BottomPanel: React.FC = () => {
                          <h5 style={{ fontSize: '10px', textTransform: 'uppercase', color: '#64748B', marginBottom: '15px' }}>Spectral Decay Per Octave Band</h5>
                          <div style={{ display: 'flex', gap: '2px', height: '160px', alignItems: 'flex-end' }}>
                             {selectedResult.metrics.t30.map((t: number, i: number) => (
-                                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                <div key={i} style={{ display: 'flex', flex: 1, flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                                     <div style={{ width: '100%', height: `${Math.min(100, t * 20)}%`, background: i === 13 ? '#00E5FF' : '#1A1F26', borderRadius: '2px 2px 0 0', position: 'relative' }}>
                                         {i % 3 === 0 && <span style={{ position: 'absolute', bottom: '-20px', fontSize: '8px', color: '#64748B', transform: 'rotate(-45deg)', whiteSpace: 'nowrap' }}>{getOctaveFreq(i)}</span>}
                                     </div>
@@ -263,37 +296,4 @@ export const BottomPanel: React.FC = () => {
       </div>
     </DraggableWindow>
   );
-};
-
-const TabButton: React.FC<{ active: boolean, onClick: () => void, icon: React.ReactNode, label: string }> = ({ active, onClick, icon, label }) => (
-    <button 
-        onClick={onClick}
-        style={{ 
-            display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', background: 'none', border: 'none', 
-            borderBottom: active ? '2px solid #00E5FF' : '2px solid transparent',
-            color: active ? '#00E5FF' : '#64748B', fontSize: '11px', fontWeight: active ? 'bold' : 'normal',
-            cursor: 'pointer', transition: 'all 0.2s'
-        }}
-    >
-        {icon} {label}
-    </button>
-);
-
-const MetricCard: React.FC<{ label: string, value: string, unit: string, status: string }> = ({ label, value, unit, status }) => (
-    <div style={{ background: '#0F172A', border: '1px solid #1A1F26', padding: '15px', borderRadius: '8px' }}>
-        <div style={{ fontSize: '9px', textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.05em', marginBottom: '8px' }}>{label}</div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-            <span style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-brand)', color: '#F8FAFC' }}>{value}</span>
-            <span style={{ fontSize: '12px', color: '#64748B' }}>{unit}</span>
-        </div>
-        <div style={{ marginTop: '8px', fontSize: '9px', color: status === 'Excellent' || status === 'Good' ? '#4ADE80' : '#00E5FF', background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
-            STATUS: {status}
-        </div>
-    </div>
-);
-
-const getOctaveFreq = (i: number) => {
-  const freqs = [50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000];
-  const f = freqs[i];
-  return f >= 1000 ? `${f/1000}k` : f;
 };
