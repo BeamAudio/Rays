@@ -74,7 +74,6 @@ export const BottomPanel: React.FC = () => {
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
     ctx.clearRect(0, 0, width, height);
 
-    const xToPx = (x: number) => ((x - etcView.x) / etcView.w) * width;
     const yToPx = (y: number) => {
         const val = Math.max(-120, y);
         return ((val - etcView.y) / etcView.h) * height;

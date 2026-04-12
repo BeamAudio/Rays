@@ -1,6 +1,5 @@
 import React from 'react';
 import { useProjectStore } from '../state/project_state';
-import type { AcousticMaterial } from '../types';
 
 import { DraggableWindow } from './DraggableWindow';
 import { DirectivityLibrary } from '../engine/directivity_library';
