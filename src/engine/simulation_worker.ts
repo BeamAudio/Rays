@@ -33,7 +33,7 @@ self.onmessage = (e: MessageEvent) => {
     const tracer = new RayTracer(bvh, objects, environmentSettings);
 
     const resultsMap = new Map();
-    receivers.forEach((r: SceneObject) => resultsMap.set(r.id, { times: [], orders: [], energies: [], paths: [] }));
+    receivers.forEach((r: SceneObject) => resultsMap.set(r.id, { times: [], orders: [], energies: [], angles: [], paths: [] }));
 
     // Phase 1: High-Order Deterministic ISM
     sources.forEach((s: SceneObject, idx: number) => {
