@@ -6,8 +6,10 @@ import type { SceneObject, EnvironmentSettings } from '../types';
 // Internal raytracer IR structure — energies and paths are always present
 interface RayImpulseResponse {
   times: number[];
+  orders: number[];
   energies: number[][];
-  paths: { points: [number, number, number][], energy: number, time: number }[];
+  angles: [number, number][]; // [azimuth, elevation] in radians
+  paths: { points: [number, number, number][], energy: number, time: number, order: number }[];
 }
 
 class ReceiverGrid {
@@ -99,16 +101,15 @@ export class RayTracer {
       return alpha; // returns attenuation coefficient in dB/m
     });
   }
-
   public simulate(source: SceneObject, receivers: SceneObject[]): Map<string, RayImpulseResponse> {
     const results = new Map<string, RayImpulseResponse>();
-    receivers.forEach(r => results.set(r.id, { times: [], energies: [], paths: [] }));
+    receivers.forEach(r => results.set(r.id, { times: [], orders: [], energies: [], angles: [], paths: [] }));
     
     this.recGrid = new ReceiverGrid(receivers);
     this.totalPathsCollected = 0;
     
-    // Phase 1: Image Source Method (Direct + 1st Order)
-    this.runISM(source, receivers, results);
+    // Phase 1: High-Order Image Source Method (Deterministic)
+    this.runRecursiveISM(source, receivers, results, 2); // Default to 2nd order for precision
 
     // Phase 2: Stochastic Ray Tracing (Late Reverb)
     const lateRays = Math.max(1000, Math.floor(this.numRays / 2));
@@ -136,139 +137,133 @@ export class RayTracer {
     }
   }
 
-  public runISM(source: SceneObject, receivers: SceneObject[], results: Map<string, RayImpulseResponse>) {
+  public runRecursiveISM(source: SceneObject, receivers: SceneObject[], results: Map<string, RayImpulseResponse>, maxOrder: number) {
     const sourcePos = new THREE.Vector3(...source.position);
-    // Direct Sound (0th Order)
+    
+    // Order 0: Direct Sound
+    this.checkVisibilityAndRecord(source, sourcePos, receivers, results, [], 0);
+
+    if (maxOrder < 1) return;
+
+    // Extract reflecting planes
+    const planes: { normal: THREE.Vector3, point: THREE.Vector3, obj: SceneObject }[] = [];
+    const processedPlanes = new Set<string>();
+
+    for (const obj of this.objects.values()) {
+        if (!obj.triangles || obj.type === 'receiver' || obj.type === 'source') continue;
+        for (let i = 0; i < obj.triangles.length; i += 9) {
+            const v0 = new THREE.Vector3(obj.triangles[i], obj.triangles[i+1], obj.triangles[i+2]);
+            const v1 = new THREE.Vector3(obj.triangles[i+3], obj.triangles[i+4], obj.triangles[i+5]);
+            const v2 = new THREE.Vector3(obj.triangles[i+6], obj.triangles[i+7], obj.triangles[i+8]);
+            const normal = new THREE.Vector3().crossVectors(v1.clone().sub(v0), v2.clone().sub(v0)).normalize();
+            const d = v0.dot(normal);
+            const hash = `${normal.x.toFixed(2)},${normal.y.toFixed(2)},${normal.z.toFixed(2)}_${d.toFixed(2)}`;
+            if (processedPlanes.has(hash)) continue;
+            processedPlanes.add(hash);
+            planes.push({ normal, point: v0, obj });
+        }
+    }
+
+    // Recursive ISM Trace
+    const trace = (currentSourcePos: THREE.Vector3, order: number, usedPlanes: any[]) => {
+        if (order >= maxOrder) return;
+
+        planes.forEach(plane => {
+            // Avoid reflecting back onto the same plane immediately
+            if (usedPlanes.length > 0 && usedPlanes[usedPlanes.length - 1] === plane) return;
+
+            // Mirror current source across this plane
+            const distToPlane = new THREE.Vector3().subVectors(currentSourcePos, plane.point).dot(plane.normal);
+            if (distToPlane <= 0) return; // Source is behind plane
+
+            const imagePos = currentSourcePos.clone().sub(plane.normal.clone().multiplyScalar(2 * distToPlane));
+            const newUsedPlanes = [...usedPlanes, plane];
+
+            // Check visibility for this image source across all receivers
+            this.checkVisibilityAndRecord(source, imagePos, receivers, results, newUsedPlanes, order + 1);
+
+            // Recurse
+            trace(imagePos, order + 1, newUsedPlanes);
+        });
+    };
+
+    trace(sourcePos, 0, []);
+  }
+
+  private checkVisibilityAndRecord(source: SceneObject, imagePos: THREE.Vector3, receivers: SceneObject[], results: Map<string, RayImpulseResponse>, planes: any[], order: number) {
     receivers.forEach(receiver => {
-      const recPos = new THREE.Vector3(...receiver.position);
-      const dist = sourcePos.distanceTo(recPos);
-      const dir = new THREE.Vector3().subVectors(recPos, sourcePos).normalize();
-      
-      // Raycast to check visibility (Line of Sight)
-      const hit = this.bvh.intersect({ origin: sourcePos, direction: dir });
-      
-      if (!hit || hit.t >= dist - 0.01) {
-        // Visible!
-        const time = dist / 343.0;
-        const energy = this.getDirectivityWeights(source, dir);
+        const recPos = new THREE.Vector3(...receiver.position);
+        const totalDist = imagePos.distanceTo(recPos);
+        const time = totalDist / 343.0;
         
-        // 1/r^2 law
-        const attenuation = 1.0 / Math.max(1.0, dist * dist);
+        // Find the valid reflection points on the planes (Working backwards from receiver)
+        const points: [number, number, number][] = [[source.position[0], source.position[1], source.position[2]]];
+        let currentStart = recPos.clone();
+        let currentTarget = imagePos.clone();
+        const reflPoints: THREE.Vector3[] = [];
+
+        for (let i = planes.length - 1; i >= 0; i--) {
+            const plane = planes[i];
+            const dir = new THREE.Vector3().subVectors(currentTarget, currentStart).normalize();
+            const denom = dir.dot(plane.normal);
+            if (Math.abs(denom) < 1e-6) return; // Parallel
+            const t = new THREE.Vector3().subVectors(plane.point, currentStart).dot(plane.normal) / denom;
+            if (t <= 0) return; // Behind
+            const p = currentStart.clone().addScaledVector(dir, t);
+            reflPoints.unshift(p);
+            currentStart = p;
+            // The "image source" for the next plane in the backward chain is the reflection of the PREVIOUS image source
+            // Or more simply, we just use the points.
+        }
+
+        // Add reflection points to path
+        reflPoints.forEach(p => points.push([p.x, p.y, p.z]));
+        points.push([recPos.x, recPos.y, recPos.z]);
+
+        // Visibility Check (Physical Path validation)
+        for (let i = 0; i < points.length - 1; i++) {
+            const p1 = new THREE.Vector3(...points[i]);
+            const p2 = new THREE.Vector3(...points[i+1]);
+            const segmentDir = new THREE.Vector3().subVectors(p2, p1).normalize();
+            const segmentDist = p1.distanceTo(p2);
+            const hit = this.bvh.intersect({ origin: p1.clone().addScaledVector(segmentDir, 0.001), direction: segmentDir });
+            if (hit && hit.t < segmentDist - 0.01) {
+                // If it hit something other than the intended plane (or source/receiver geometry)
+                return;
+            }
+        }
+
+        // Energy Calculation
+        const emissionDir = new THREE.Vector3().subVectors(new THREE.Vector3(...points[1]), new THREE.Vector3(...points[0])).normalize();
+        const energy = this.getDirectivityWeights(source, emissionDir);
+        const attenuation = 1.0 / Math.max(1.0, totalDist * totalDist);
+        
         for (let f = 0; f < 24; f++) {
-          energy[f] *= attenuation;
-          // Air absorption
-          energy[f] *= Math.pow(10, -(this.airAbsorption[f] * dist) / 10);
+            energy[f] *= attenuation;
+            energy[f] *= Math.pow(10, -(this.airAbsorption[f] * totalDist) / 10);
+            // Apply absorption for each plane
+            planes.forEach(p => {
+                energy[f] *= (1.0 - (p.obj.material?.absorption[f] || 0.1));
+            });
         }
 
         const ir = results.get(receiver.id)!;
         ir.times.push(time);
+        ir.orders.push(order);
         ir.energies.push([...energy]);
         
-        // Always store direct paths if under limit
-        if (ir.paths.length < 300) {
-          ir.paths.push({
-            points: [[sourcePos.x, sourcePos.y, sourcePos.z], [recPos.x, recPos.y, recPos.z]],
-            energy: energy[3],
-            time: time
-          });
+        // Calculate arrival angles relative to receiver
+        const arrivalDir = new THREE.Vector3().subVectors(new THREE.Vector3(...points[points.length-2]), recPos).normalize();
+        const azimuth = Math.atan2(arrivalDir.x, arrivalDir.z);
+        const elevation = Math.asin(THREE.MathUtils.clamp(arrivalDir.y, -1, 1));
+        ir.angles.push([azimuth, elevation]);
+        
+        if (ir.paths.length < 500) {
+            ir.paths.push({ points, energy: energy[3], time, order });
         }
-      }
     });
-
-    // 1st Order ISM (Simplified for box walls)
-    // We iterate over the BVH triangles, create an image source, and check visibility
-    // For performance in JS, we only mirror across large planes (heuristic: triangles > 1m^2)
-    const processedPlanes = new Set<string>(); // to avoid duplicate mirror planes
-    
-    // Extract unique planes from objects
-    for (const obj of this.objects.values()) {
-      if (!obj.triangles) continue;
-      
-      const v0 = new THREE.Vector3();
-      const v1 = new THREE.Vector3();
-      const v2 = new THREE.Vector3();
-      const edge1 = new THREE.Vector3();
-      const edge2 = new THREE.Vector3();
-      
-      // Calculate plane eq for each triangle
-      for (let i = 0; i < obj.triangles.length; i += 9) {
-          v0.set(obj.triangles[i], obj.triangles[i+1], obj.triangles[i+2]);
-          v1.set(obj.triangles[i+3], obj.triangles[i+4], obj.triangles[i+5]);
-          v2.set(obj.triangles[i+6], obj.triangles[i+7], obj.triangles[i+8]);
-          
-          edge1.subVectors(v1, v0);
-          edge2.subVectors(v2, v0);
-          
-          const worldNormal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
-          if (worldNormal.lengthSq() < 0.1) continue; // degenerate triangle
-          
-          // distance from origin to plane is dot(worldPoint, normal).
-          // We can just use v0 as our point on the plane (already in world space from room_generator).
-          const planeHash = `${worldNormal.x.toFixed(2)},${worldNormal.y.toFixed(2)},${worldNormal.z.toFixed(2)}_${v0.dot(worldNormal).toFixed(2)}`;
-          if (processedPlanes.has(planeHash)) continue;
-          processedPlanes.add(planeHash);
-          
-          // Mirror source
-          const d = new THREE.Vector3().subVectors(sourcePos, v0).dot(worldNormal);
-          const imagePos = sourcePos.clone().sub(worldNormal.clone().multiplyScalar(2 * d));
-
-          receivers.forEach(receiver => {
-              const recPos = new THREE.Vector3(...receiver.position);
-              
-              // Ray from image source to receiver
-              const imageDir = new THREE.Vector3().subVectors(recPos, imagePos).normalize();
-              const imageDist = imagePos.distanceTo(recPos);
-              
-              // Find intersection with the mirror plane
-              const tPlane = new THREE.Vector3().subVectors(v0, imagePos).dot(worldNormal) / imageDir.dot(worldNormal);
-              if (tPlane > 0 && tPlane < imageDist) {
-                const reflectPoint = imagePos.clone().addScaledVector(imageDir, tPlane);
-                
-                // Visibility check 1: Source to Reflect Point
-                const hit1 = this.bvh.intersect({ origin: sourcePos, direction: new THREE.Vector3().subVectors(reflectPoint, sourcePos).normalize() });
-                // Visibility check 2: Reflect Point to Receiver
-                const hit2 = this.bvh.intersect({ origin: reflectPoint.clone().addScaledVector(worldNormal, 0.001), direction: new THREE.Vector3().subVectors(recPos, reflectPoint).normalize() });
-                
-                // If the only thing we hit is the reflecting wall, or nothing blocks the path
-                const valid1 = !hit1 || hit1.t >= sourcePos.distanceTo(reflectPoint) - 0.01;
-                const valid2 = !hit2 || hit2.t >= reflectPoint.distanceTo(recPos) - 0.01;
-
-                if (valid1 && valid2) {
-                  const totalDist = sourcePos.distanceTo(reflectPoint) + reflectPoint.distanceTo(recPos);
-                  const time = totalDist / 343.0;
-                  
-                  // Initial energy based on directivity at emission angle
-                  const dirToPoint = new THREE.Vector3().subVectors(reflectPoint, sourcePos).normalize();
-                  const energy = this.getDirectivityWeights(source, dirToPoint);
-                  
-                  const attenuation = 1.0 / Math.max(1.0, totalDist * totalDist);
-                  for (let f = 0; f < 24; f++) {
-                    energy[f] *= attenuation;
-                    energy[f] *= (1.0 - (obj.material?.absorption[f] || 0.1));
-                    energy[f] *= Math.pow(10, -(this.airAbsorption[f] * totalDist) / 10);
-                  }
-
-                  const ir = results.get(receiver.id)!;
-                  ir.times.push(time);
-                  ir.energies.push([...energy]);
-                  
-                  if (ir.paths.length < 300) {
-                    ir.paths.push({
-                      points: [
-                        [sourcePos.x, sourcePos.y, sourcePos.z], 
-                        [reflectPoint.x, reflectPoint.y, reflectPoint.z],
-                        [recPos.x, recPos.y, recPos.z]
-                      ],
-                      energy: energy[3],
-                      time: time
-                    });
-                  }
-                }
-              }
-          });
-      }
-    }
   }
+
 
   private traceRay(ray: Ray, results: Map<string, RayImpulseResponse>, initialWeights?: number[]) {
     let currentRay = { origin: ray.origin.clone(), direction: ray.direction.clone() };
@@ -282,35 +277,48 @@ export class RayTracer {
 
       const dist = hit.t;
 
-      // Check for receiver proximity using spatial grid
+      // Check for receiver proximity along the entire segment [origin -> hit.point]
       const nearbyIds = this.recGrid!.getNearby(currentRay.origin);
+      if (hit.t > 2.0) { // If segment is long, check nearby targets at the destination too
+          const destIds = this.recGrid!.getNearby(hit.point);
+          destIds.forEach(id => { if (!nearbyIds.includes(id)) nearbyIds.push(id); });
+      }
+
       nearbyIds.forEach(id => {
         const receiver = this.objects.get(id);
         if (!receiver) return;
 
         const recPos = new THREE.Vector3(...receiver.position);
-        const pa = new THREE.Vector3().subVectors(recPos, currentRay.origin);
-        const t = pa.dot(currentRay.direction); // projection distance along ray
+        const ba = new THREE.Vector3().subVectors(recPos, currentRay.origin);
+        const t = ba.dot(currentRay.direction); // projection distance along ray
 
         // If the receiver's projection falls within this physical segment
         if (t > 0 && t < dist) {
            const proj = currentRay.origin.clone().addScaledVector(currentRay.direction, t);
            const distToRay = recPos.distanceTo(proj);
            
-           if (distToRay < 0.4) { // 40cm volumetric microphone
+           if (distToRay < 0.25) { // Standardized 25cm volumetric microphone
               const distToReceiver = totalDist + t;
               const timeToReceiver = distToReceiver / 343.0;
+              const currentOrder = bounce + 1;
               
               const ir = results.get(receiver.id)!;
               ir.times.push(timeToReceiver);
+              ir.orders.push(currentOrder);
               ir.energies.push([...energy]);
+
+              // Arrival direction for stochastic ray is just the ray's current direction
+              const azimuth = Math.atan2(currentRay.direction.x, currentRay.direction.z);
+              const elevation = Math.asin(THREE.MathUtils.clamp(currentRay.direction.y, -1, 1));
+              ir.angles.push([azimuth, elevation]);
               
               // Cap global path count to avoid memory bloat
               if (this.totalPathsCollected < this.MAX_PATHS && ir.paths.length < 50) {
                  ir.paths.push({
                    points: [...history, [recPos.x, recPos.y, recPos.z]],
                    energy: energy[3],
-                   time: timeToReceiver
+                   time: timeToReceiver,
+                   order: currentOrder
                  });
                  this.totalPathsCollected++;
               }

@@ -54,49 +54,74 @@ export class Auralizer {
     this.sampleBuffer = await this.context.decodeAudioData(arrayBuffer);
   }
 
-  public updateIR(ir: ImpulseResponse) {
+  public updateIR(ir: ImpulseResponse, listenerRotation: [number, number, number] = [0, 0, 0]) {
     this.ensureContext();
     if (!this.context) return;
 
     const sr = this.context.sampleRate;
     const maxTime = Math.max(...ir.times, 0.5) + 0.5; // End tail
     const length = Math.ceil(maxTime * sr);
-    const buffer = this.context.createBuffer(1, length, sr);
-    const data = buffer.getChannelData(0);
-
-    // Technique: Stochastic Synthesis
-    // For every ray hit, we place a short burst of noise scaled by energy
-    // This preserves both the timing and the spectral distribution (averaging bands)
     
+    // Create a Stereo Buffer
+    const buffer = this.context.createBuffer(2, length, sr);
+    const leftData = buffer.getChannelData(0);
+    const rightData = buffer.getChannelData(1);
+
+    const listenerYaw = listenerRotation[1]; // Rotation around Y axis
+
     for (let i = 0; i < ir.times.length; i++) {
       const time = ir.times[i];
       const energies = ir.energies?.[i] ?? []; // 24 octave bands
+      const angle = ir.angles?.[i] ?? [0, 0]; // [azimuth, elevation]
+      
       const idx = Math.floor(time * sr);
       
       if (idx < length) {
-        // Simple broadband reconstruction: average middle-high bands (500Hz-2kHz)
-        // 500Hz = idx 10, 2kHz = idx 16
+        // Average energy across speech-critical bands
         let avgEnergy = 0;
         for (let f = 10; f <= 16; f++) avgEnergy += energies[f];
         avgEnergy /= 7;
-        
         const amp = Math.sqrt(avgEnergy);
         
-        // Add a small spike (Dirac-like for early, noise-like for late)
-        // For early reflections (< 50ms), we use a sharper grain
+        // --- Spatial Audio Logic ---
+        // Adjust azimuth based on listener's rotation
+        const relativeAzimuth = angle[0] - listenerYaw;
+        
+        // Simple Sine-based ILD (Interaural Level Difference)
+        const panning = Math.sin(relativeAzimuth); // -1 (Left) to 1 (Right)
+        const leftGain = Math.sqrt(0.5 * (1 - panning));
+        const rightGain = Math.sqrt(0.5 * (1 + panning));
+        
+        // Simple ITD (Interaural Time Difference)
+        // Max delay is approx 0.66ms for human head
+        const maxITD = 0.00066; 
+        const itdShift = Math.floor(panning * maxITD * sr);
+
         const width = time < 0.05 ? 1 : 12;
-        for (let w = 0; w < width && (idx + w) < length; w++) {
+        for (let w = 0; w < width && (idx + w + Math.abs(itdShift)) < length; w++) {
           const noise = (Math.random() * 2 - 1);
-          data[idx + w] += amp * noise * (1.0 - w/width);
+          const val = amp * noise * (1.0 - w/width);
+          
+          // Apply ITD by shifting the index for one ear
+          const lIdx = itdShift > 0 ? idx + w + itdShift : idx + w;
+          const rIdx = itdShift < 0 ? idx + w + Math.abs(itdShift) : idx + w;
+          
+          if (lIdx < length) leftData[lIdx] += val * leftGain;
+          if (rIdx < length) rightData[rIdx] += val * rightGain;
         }
       }
     }
 
     // Normalize
     let max = 0;
-    for (let i = 0; i < length; i++) max = Math.max(max, Math.abs(data[i]));
+    for (let i = 0; i < length; i++) {
+      max = Math.max(max, Math.abs(leftData[i]), Math.abs(rightData[i]));
+    }
     if (max > 0) {
-      for (let i = 0; i < length; i++) data[i] /= (max * 1.05);
+      for (let i = 0; i < length; i++) {
+        leftData[i] /= (max * 1.05);
+        rightData[i] /= (max * 1.05);
+      }
     }
 
     this.convolver.buffer = buffer;

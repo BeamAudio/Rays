@@ -11,32 +11,32 @@ export function calculateMetrics(ir: ImpulseResponse, ambientNoiseSPL: number[] 
     etc: []
   };
 
-  if (!ir.times || ir.times.length === 0) return metrics;
+  const { times, energies, pressures, orders } = ir;
+  if (!times || times.length === 0) return metrics;
 
   // 1. Binning energy into a high-resolution time grid (e.g., 1ms)
-  const maxTime = Math.max(...ir.times, 1.0);
+  const maxTime = Math.max(...times, 1.0);
   const binSize = 0.001; // 1ms
   const numBins = Math.ceil(maxTime / binSize);
   const energyGrid = Array.from({ length: numBins }, () => Array(numOctaves).fill(0));
 
-  ir.times.forEach((t, i) => {
+  times.forEach((t, i) => {
     const bin = Math.floor(t / binSize);
     if (bin < numBins) {
-      if (ir.pressures) {
-         const p = ir.pressures[i];
+      if (pressures) {
+         const p = pressures[i];
          const energy = p * p; // Square pressure for energy
          for (let f = 0; f < numOctaves; f++) {
             energyGrid[bin][f] += energy;
          }
-      } else if (ir.energies) {
+      } else if (energies) {
         for (let f = 0; f < numOctaves; f++) {
-          energyGrid[bin][f] += ir.energies[i][f];
+          energyGrid[bin][f] += energies[i][f];
         }
       }
     }
   });
 
-  // Calculate ETC based on broadband energy (avg of middle bands)
   const broadband = energyGrid.map(bin => bin[13]); // Use 1kHz for etc
   
   const maxBroadband = Math.max(...broadband, 1e-12);
@@ -45,10 +45,24 @@ export function calculateMetrics(ir: ImpulseResponse, ambientNoiseSPL: number[] 
     energy: Math.max(-90, 10 * Math.log10(e / maxBroadband + 1e-12))
   }));
 
+  // Capture individual arrivals for high-detail ETC visualization
+  if (times && orders && energies) {
+    metrics.arrivals = times.map((t, i) => ({
+      time: t,
+      energy: energies[i][13], // Use 1kHz band for arrival energy
+      order: orders[i]
+    })).sort((a,b) => a.time - b.time);
+
+    // Normalize arrival energy relative to the same max used for ETC
+    metrics.arrivals.forEach(arr => {
+        arr.energy = Math.max(-90, 10 * Math.log10(arr.energy / maxBroadband + 1e-12));
+    });
+  }
+
   for (let f = 0; f < numOctaves; f++) {
     // 2. SPL (Simplified)
-    const totalEnergy = ir.energies 
-       ? ir.energies.reduce((sum, e) => sum + e[f], 0) 
+    const totalEnergy = energies 
+       ? energies.reduce((sum, e) => sum + e[f], 0) 
        : energyGrid.reduce((sum, e) => sum + e[f], 0);
     metrics.spl[f] = 10 * Math.log10(totalEnergy + 1e-12);
 

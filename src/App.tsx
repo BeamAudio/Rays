@@ -11,7 +11,7 @@ import { useProjectStore } from './state/project_state';
 import './App.css';
 
 function App() {
-  const { currentView, undo, redo } = useProjectStore();
+  const { currentView, undo, redo, showAnalysis, selectedId, removeObject, objects } = useProjectStore();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -23,12 +23,25 @@ function App() {
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         redo();
+      } else if (e.key === 'Delete' && selectedId) {
+        removeObject(selectedId);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        // Trigger save project
+        const data = JSON.stringify(objects, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'beam_audio_project.json';
+        a.click();
+        URL.revokeObjectURL(url);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo]);
+  }, [undo, redo, selectedId, removeObject, objects]);
 
   return (
     <div className="app-container">
@@ -45,7 +58,7 @@ function App() {
             </ErrorBoundary>
           </div>
           <RightPanel />
-          <BottomPanel />
+          {showAnalysis && <BottomPanel />}
         </div>
       )}
 

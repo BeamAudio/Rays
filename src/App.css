@@ -184,3 +184,66 @@
   background: var(--accent-secondary);
   border-color: var(--accent-secondary);
 }
+
+.active-glow {
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+  background: rgba(0, 229, 255, 0.2) !important;
+}
+
+.window-close-btn:hover {
+  background: rgba(255, 61, 0, 0.2) !important;
+  color: #FF3D00 !important;
+}
+
+.window-close-btn:active {
+  transform: scale(0.9);
+}
+
+.button.small {
+  padding: 2px 6px;
+  font-size: 9px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #64748B;
+}
+
+.button.small:hover {
+  background: rgba(0, 229, 255, 0.1);
+  color: #00E5FF;
+  border-color: #00E5FF;
+}
+
+.analysis-suite .draggable-window-content {
+  padding: 0 !important;
+  background: #0A0E14 !important;
+}
+
+.input {
+  background: #1A1F26;
+  border: 1px solid #2D3748;
+  color: #E2E8F0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: #00E5FF;
+}
+
+/* Scrollbar styling for a cleaner professional look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #05070A;
+}
+::-webkit-scrollbar-thumb {
+  background: #1A1F26;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2D3748;
+}

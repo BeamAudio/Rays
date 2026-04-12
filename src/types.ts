@@ -8,6 +8,7 @@ export interface DirectivityPattern {
 
 export interface AcousticMaterial {
   name: string;
+  category?: string;
   absorption: number[]; // 24 octave bands: 50Hz to 10kHz
   scattering?: number;  // Scattering coefficient (0-1 scalar)
   transmission?: number; // Transmission coefficient (0-1 scalar)
@@ -41,6 +42,8 @@ export interface SceneObject {
   directivity?: 'omni' | 'cardioid' | 'custom'; // Directivity mode string
   directivityData?: DirectivityPattern;           // Full balloon data when mode is 'custom'
   intensity?: number;
+  muted?: boolean;
+  solo?: boolean;
 }
 
 export interface AcousticMetrics {
@@ -50,12 +53,13 @@ export interface AcousticMetrics {
   spl: number[];
   sti: number; // Broadband STI (0-1)
   etc: { time: number; energy: number }[];
+  arrivals?: { time: number; energy: number; order: number }[];
 }
 
 export interface SimulationResult {
   receiverId: string;
   metrics: AcousticMetrics;
-  rayPaths?: { points: [number, number, number][], energy: number, time: number }[];
+  rayPaths?: { points: [number, number, number][], energy: number, time: number, order: number }[];
   position?: [number, number, number];
 }
 
@@ -70,9 +74,11 @@ export interface EnvironmentSettings {
 
 export interface ImpulseResponse {
   times: number[];
+  orders?: number[]; // reflection order for each arrival
   energies?: number[][]; // [timeIdx][octaveIdx]
+  angles?: [number, number][]; // [timeIdx][azimuth, elevation] in radians
   pressures?: number[]; // [timeIdx]
-  paths?: { points: [number, number, number][], energy: number, time: number }[];
+  paths?: { points: [number, number, number][], energy: number, time: number, order: number }[];
 }
 
 export interface NumericalImpulseResponse {

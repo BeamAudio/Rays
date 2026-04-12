@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Play, Save, Loader2, FolderOpen, Layout, Globe, PenTool, RotateCcw, RotateCw } from 'lucide-react';
+import { Play, Save, Loader2, FolderOpen, Layout, Globe, PenTool, RotateCcw, RotateCw, Activity, Camera } from 'lucide-react';
 import { useProjectStore } from '../state/project_state';
 import * as THREE from 'three';
 import SimulationWorker from '../engine/simulation_worker?worker';
@@ -9,7 +9,8 @@ export const Topbar: React.FC = () => {
   const { 
     objects, setSimulating, setSimulationResults, 
     isSimulating, simulationProgress, environmentSettings,
-    currentView, setCurrentView, undo, redo, past, future
+    currentView, setCurrentView, undo, redo, past, future,
+    showAnalysis, toggleAnalysis
   } = useProjectStore();
   
   const loadRef = useRef<HTMLInputElement>(null);
@@ -40,10 +41,30 @@ export const Topbar: React.FC = () => {
     reader.readAsText(file);
   };
 
+  const handleCaptureSnapshot = () => {
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return;
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `beam_rays_snapshot_${new Date().getTime()}.png`;
+    a.click();
+  };
+
   const handleRunSimulation = () => {
     if (isSimulating) return;
 
-    const sources = objects.filter(o => o.type === 'source');
+    let sources = objects.filter(o => o.type === 'source');
+    
+    // Multi-source active logic: if any are soloed, only take those. 
+    // Otherwise, take all that are not muted.
+    const soloedSources = sources.filter(s => s.solo);
+    if (soloedSources.length > 0) {
+      sources = soloedSources;
+    } else {
+      sources = sources.filter(s => !s.muted);
+    }
+
     const receivers = objects.filter(o => o.type === 'receiver');
     const isPlanar = (o: any) => o.shape === 'plane' || o.type === 'plane' || (o.type === 'mesh' && o.scale?.[2] === 1 && Math.abs(o.scale[0] - 1) > 0.001);
     const planes = objects.filter(isPlanar);
@@ -122,6 +143,7 @@ export const Topbar: React.FC = () => {
             auralizer.updateIR(e.data.rawIRs[primaryResult.receiverId]);
           }
         }
+        toggleAnalysis(true);
       } else if (e.data.type === 'ERROR') {
         alert('Simulation Error: ' + e.data.error);
         setSimulating(false);
@@ -191,6 +213,21 @@ export const Topbar: React.FC = () => {
         </button>
         <button className="button" onClick={handleSaveProject} title="Save Project">
           <Save size={16} />
+        </button>
+        <button className="button" onClick={handleCaptureSnapshot} title="Take Snapshot">
+          <Camera size={16} />
+        </button>
+        <button 
+          className={`button ${showAnalysis ? 'active-glow' : ''}`} 
+          onClick={() => toggleAnalysis()} 
+          title="Toggle Analysis Console"
+          style={{ 
+            background: showAnalysis ? 'rgba(0, 229, 255, 0.15)' : undefined,
+            color: showAnalysis ? '#00E5FF' : undefined,
+            borderColor: showAnalysis ? '#00E5FF' : undefined
+          }}
+        >
+          <Activity size={16} />
         </button>
         <button 
           className="button primary" 

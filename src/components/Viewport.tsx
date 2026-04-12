@@ -10,22 +10,40 @@ const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect
   const meshRef = useRef<THREE.Mesh>(null);
   const { updateObject, results, showHeatmap, selectedBand } = useProjectStore();
 
-  const getMaterialProps = (matName?: string) => {
-    switch (matName?.toLowerCase()) {
-      case 'concrete': return { color: "#888888", opacity: 1.0, roughness: 0.9, metalness: 0.1, transparent: false };
+  const getMaterialProps = (mat?: { name?: string, category?: string }) => {
+    if (!mat) return { color: "#ffffff", opacity: 0.4, roughness: 0.2, metalness: 0.5, transparent: true };
+
+    const category = mat.category?.toLowerCase();
+    switch (category) {
+      case 'masonry': return { color: "#888888", opacity: 1.0, roughness: 0.9, metalness: 0.1, transparent: false };
       case 'wood': return { color: "#8b5a2b", opacity: 1.0, roughness: 0.7, metalness: 0.1, transparent: false };
-      case 'carpet': return { color: "#602020", opacity: 1.0, roughness: 1.0, metalness: 0.0, transparent: false };
+      case 'flooring': return { color: "#602020", opacity: 1.0, roughness: 1.0, metalness: 0.0, transparent: false };
       case 'glass': return { color: "#aaddff", opacity: 0.25, roughness: 0.05, metalness: 0.9, transparent: true };
-      case 'generic':
-      default: return { color: "#ffffff", opacity: 0.4, roughness: 0.2, metalness: 0.5, transparent: true };
+      case 'acoustic treatment': return { color: "#22cc88", opacity: 1.0, roughness: 0.8, metalness: 0.0, transparent: false };
+      case 'fabric': return { color: "#aa4488", opacity: 1.0, roughness: 1.0, metalness: 0.0, transparent: false };
+      default: {
+        // Fallback to name-based if category is missing or unknown
+        switch (mat.name?.toLowerCase()) {
+          case 'concrete': return { color: "#888888", opacity: 1.0, roughness: 0.9, metalness: 0.1, transparent: false };
+          case 'wood': return { color: "#8b5a2b", opacity: 1.0, roughness: 0.7, metalness: 0.1, transparent: false };
+          case 'carpet': return { color: "#602020", opacity: 1.0, roughness: 1.0, metalness: 0.0, transparent: false };
+          case 'glass': return { color: "#aaddff", opacity: 0.25, roughness: 0.05, metalness: 0.9, transparent: true };
+          default: return { color: "#ffffff", opacity: 0.4, roughness: 0.2, metalness: 0.5, transparent: true };
+        }
+      }
     }
   };
 
   const handleTransform = () => {
     if (meshRef.current) {
       const { position, rotation, scale } = meshRef.current;
+      
+      // Simple 0.5m Grid Snapping
+      const snap = (v: number) => Math.round(v * 2) / 2;
+      const snappedPos: [number, number, number] = [snap(position.x), snap(position.y), snap(position.z)];
+
       updateObject(obj.id, {
-        position: [position.x, position.y, position.z],
+        position: snappedPos,
         rotation: [rotation.x, rotation.y, rotation.z],
         scale: [scale.x, scale.y, scale.z],
       });
@@ -39,6 +57,8 @@ const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect
   const isReceiver = obj.type === 'receiver';
   const receiverResult = isReceiver ? results.find(r => r.receiverId === obj.id) : null;
   const showHUD = isReceiver && receiverResult;
+
+  const matProps = getMaterialProps(obj.material);
 
   return (
     <>
@@ -84,13 +104,13 @@ const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect
 
           {obj.type === 'mesh' ? (
             <meshStandardMaterial
-              color={isSelected ? "#00e5ff" : getMaterialProps(obj.material?.name).color}
-              transparent={getMaterialProps(obj.material?.name).transparent || isSelected}
-              opacity={isSelected ? 0.8 : getMaterialProps(obj.material?.name).opacity}
-              roughness={getMaterialProps(obj.material?.name).roughness}
-              metalness={getMaterialProps(obj.material?.name).metalness}
+              color={isSelected ? "#00e5ff" : matProps.color}
+              transparent={matProps.transparent || isSelected}
+              opacity={isSelected ? 0.8 : matProps.opacity}
+              roughness={matProps.roughness}
+              metalness={matProps.metalness}
               side={THREE.DoubleSide}
-              depthWrite={!getMaterialProps(obj.material?.name).transparent}
+              depthWrite={!matProps.transparent}
             />
           ) : obj.type === 'source' ? (
             <meshStandardMaterial
@@ -123,6 +143,15 @@ const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect
               <mesh position={[0, 0.4, 1.7]} rotation={[-Math.PI / 2, 0, 0]}>
                 <coneGeometry args={[0.1, 0.3, 16]} />
                 <meshBasicMaterial color="#00ffff" />
+              </mesh>
+            </group>
+          )}
+
+          {isReceiver && (
+            <group rotation={[Math.PI / 2, 0, 0]}>
+              <mesh position={[0, 0, 0.4]} rotation={[-Math.PI / 2, 0, 0]}>
+                <coneGeometry args={[0.08, 0.2, 16]} />
+                <meshBasicMaterial color="#ff00ff" />
               </mesh>
             </group>
           )}
@@ -251,7 +280,9 @@ const VolumetricModes: React.FC<{ roomDims: { L: number, H: number, W: number },
 
 const SceneContent: React.FC = () => {
   const { objects, selectedId, setSelected, results, showRays, maxVisibleBounces, selectedRayIndex, setSelectedRayIndex, currentTime, showRoomModes, selectedMode } = useProjectStore();
-  const selectedResult = results.find(r => r.receiverId === selectedId) || results.find(r => !r.receiverId?.includes('_')) || results[0];
+  const selectedResult = results.find(r => r.receiverId === selectedId);
+  // Fallback to first primary receiver only if nothing is selected or if we are in general analysis mode
+  const displayResult = selectedResult || results.find(r => !r.receiverId?.includes('_'));
 
   const roomInfo = React.useMemo(() => {
     let minX = Infinity, minY = Infinity, minZ = Infinity;
@@ -309,9 +340,9 @@ const SceneContent: React.FC = () => {
         />
       ))}
 
-      {showRays && selectedResult?.rayPaths && (
+      {showRays && displayResult?.rayPaths && (
         <group>
-          {selectedResult.rayPaths.slice(0, 100).map((path, i) => {
+          {displayResult.rayPaths.slice(0, 100).map((path, i) => {
             // Highlight selected ray
             const isSelected = selectedRayIndex === i;
             const isMuted = selectedRayIndex !== null && !isSelected;
@@ -355,17 +386,14 @@ const SceneContent: React.FC = () => {
 
             if (animatedPts.length < 2) return null;
 
-            // Match color scale from timeline heatmap
-            const ms = path.time * 1000;
-            let rayColor = "#00ffff";
-            if (ms < 20) rayColor = "#ff4d4d";
-            else if (ms < 50) rayColor = "#ffaa00";
-            else if (ms < 80) rayColor = "#e6e600";
-            else if (ms < 150) rayColor = "#33cc33";
-            else if (ms < 300) rayColor = "#3399ff";
-            else rayColor = "#6666ff";
+            // Determine ray color based on reflection order
+            let rayColor = "#6666ff"; // Default Late
+            if (path.order === 0) rayColor = "#ffffff"; // Direct
+            else if (path.order === 1) rayColor = "#33cc33"; // 1st Order (Green)
+            else if (path.order === 2) rayColor = "#ffaa00"; // 2nd Order (Orange)
+            else if (path.order === 3) rayColor = "#e6e600"; // 3rd Order (Yellow)
 
-            if (isSelected) rayColor = "#ffffff";
+            if (isSelected) rayColor = "#00ffff"; // Cyan highlight for selection
 
             return (
               <Line
@@ -396,7 +424,11 @@ const SceneContent: React.FC = () => {
 };
 
 export const Viewport: React.FC = () => {
-  const { showRays, showHeatmap, showRoomModes, maxVisibleBounces, setVisualizationOptions, results, selectedBand, setSelectedBand, viewMode, setViewMode } = useProjectStore();
+  const { 
+    showRays, showHeatmap, showRoomModes, maxVisibleBounces, setVisualizationOptions, 
+    results, selectedBand, setSelectedBand, viewMode, setViewMode,
+    environmentSettings, setEnvironmentSettings
+  } = useProjectStore();
 
   const splStats = React.useMemo(() => {
     if (results.length === 0) return { min: 0, max: 0 };
@@ -497,6 +529,30 @@ export const Viewport: React.FC = () => {
                 <input type="range" min="0" max="20" value={maxVisibleBounces} onChange={e => setVisualizationOptions({ maxVisibleBounces: parseInt(e.target.value) })} style={{ width: '100%' }} />
               </div>
             )}
+
+            <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '15px', paddingTop: '15px' }}>
+              <h4 style={{ fontSize: '11px', color: 'var(--text-primary)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>Simulation Settings</h4>
+              
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>ISM Depth (Order): {environmentSettings.ismOrder || 2}</label>
+                <input 
+                  type="range" min="0" max="4" 
+                  value={environmentSettings.ismOrder || 2} 
+                  onChange={e => setEnvironmentSettings({ ismOrder: parseInt(e.target.value) })} 
+                  style={{ width: '100%' }} 
+                />
+              </div>
+
+              <div style={{ marginBottom: '10px' }}>
+                <label style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>Ray Count: {(environmentSettings.rayCount || 25000).toLocaleString()}</label>
+                <input 
+                  type="range" min="1000" max="100000" step="5000"
+                  value={environmentSettings.rayCount || 25000} 
+                  onChange={e => setEnvironmentSettings({ rayCount: parseInt(e.target.value) })} 
+                  style={{ width: '100%' }} 
+                />
+              </div>
+            </div>
 
             {showHeatmap && (
               <div style={{ marginTop: '15px' }}>

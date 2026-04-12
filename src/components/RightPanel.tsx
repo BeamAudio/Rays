@@ -5,6 +5,7 @@ import type { AcousticMaterial } from '../types';
 import { DraggableWindow } from './DraggableWindow';
 import { DirectivityLibrary } from '../engine/directivity_library';
 import { NumericInput } from './NumericInput';
+import { MaterialPicker } from './MaterialPicker';
 
 export const RightPanel: React.FC = () => {
   const { 
@@ -189,26 +190,18 @@ export const RightPanel: React.FC = () => {
             <>
               <div className="prop-group">
                 <label style={labelStyle}>Acoustic Material</label>
-                <select 
-                  style={selectStyle}
-                  value={selectedObject.material?.name || 'generic'}
-                  onChange={(e) => {
-                    const material: AcousticMaterial = {
-                      name: e.target.value,
-                      absorption: Array(24).fill(0.1),
-                      scattering: 0.1,
-                      transmission: 0.8,
-                      density: 2.5
-                    };
-                    updateObject(selectedObject.id, { material });
+                <MaterialPicker 
+                  currentMaterial={selectedObject.material?.name}
+                  onSelect={(material) => {
+                    updateObject(selectedObject.id, { 
+                      material: {
+                        ...material,
+                        transmission: selectedObject.material?.transmission || 0,
+                        density: selectedObject.material?.density || 0
+                      } 
+                    });
                   }}
-                >
-                  <option value="generic">Generic Wall</option>
-                  <option value="concrete">Concrete</option>
-                  <option value="wood">Wood Panel</option>
-                  <option value="carpet">Carpet</option>
-                  <option value="glass">Glass</option>
-                </select>
+                />
               </div>
 
               <div className="prop-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>

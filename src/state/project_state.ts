@@ -28,6 +28,7 @@ export interface ProjectState {
   currentTime: number; // ms, for scrubber
   ambientNoiseSPL: number[]; // 24 octave bands
   auralizationSettings: { sampleUrl: string; dry: number; wet: number; isPlaying: boolean; };
+  showAnalysis: boolean;
   installedModels: SpeakerModel[];
   setEnvironmentSettings: (settings: Partial<EnvironmentSettings>) => void;
   addObject: (obj: Omit<SceneObject, 'id'>) => void;
@@ -39,6 +40,7 @@ export interface ProjectState {
   updateObject: (id: string, updates: Partial<SceneObject>) => void;
   setSimulationResults: (results: SimulationResult[]) => void;
   setSimulating: (isSimulating: boolean, progress?: number) => void;
+  toggleAnalysis: (show?: boolean) => void;
   setVisualizationOptions: (options: { showRays?: boolean; showHeatmap?: boolean; showRoomModes?: boolean; selectedMode?: [number, number, number]; maxVisibleBounces?: number }) => void;
   setAmbientNoise: (noise: number[]) => void;
   setAuralization: (settings: Partial<ProjectState['auralizationSettings']>) => void;
@@ -58,6 +60,7 @@ export const useProjectStore = create<ProjectState>()(
       past: [],
       future: [],
       installedModels: [],
+      showAnalysis: false,
       environmentSettings: {
         temperature: 20,
         humidity: 50,
@@ -142,6 +145,7 @@ export const useProjectStore = create<ProjectState>()(
       setSelectedBand: (index) => set({ selectedBand: index }),
       setSimulationResults: (results) => set({ results, isSimulating: false, simulationProgress: 100 }),
       setSimulating: (isSimulating, progress = 0) => set({ isSimulating, simulationProgress: progress }),
+      toggleAnalysis: (show) => set((state) => ({ showAnalysis: show === undefined ? !state.showAnalysis : show })),
       setVisualizationOptions: (options) => set(() => ({ ...options })),
       setAmbientNoise: (noise) => set({ ambientNoiseSPL: noise }),
       setAuralization: (settings) => set((state) => ({ auralizationSettings: { ...state.auralizationSettings, ...settings } })),

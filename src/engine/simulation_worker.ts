@@ -33,18 +33,23 @@ self.onmessage = (e: MessageEvent) => {
     const tracer = new RayTracer(bvh, objects, environmentSettings);
 
     const resultsMap = new Map();
-    receivers.forEach((r: SceneObject) => resultsMap.set(r.id, { times: [], energies: [], paths: [] }));
+    receivers.forEach((r: SceneObject) => resultsMap.set(r.id, { times: [], orders: [], energies: [], paths: [] }));
 
-    // Phase 1: ISM (Direct + 1st Order)
-    tracer.runISM(sources[0], receivers, resultsMap);
-    self.postMessage({ type: 'PROGRESS', progress: 10 });
+    // Phase 1: High-Order Deterministic ISM
+    sources.forEach((s: SceneObject, idx: number) => {
+      tracer.runRecursiveISM(s, receivers, resultsMap, environmentSettings?.ismOrder || 2);
+      const progress = Math.floor(((idx + 1) / sources.length) * 10);
+      self.postMessage({ type: 'PROGRESS', progress });
+    });
 
     // Phase 2: Batched Stochastic Ray Tracing
     const lateRays = Math.max(1000, Math.floor((environmentSettings?.rayCount || 25000) / 2));
     const BATCH_SIZE = 2500;
     
     for (let i = 0; i < lateRays; i += BATCH_SIZE) {
-      tracer.simulateBatch(sources[0], receivers, resultsMap, i, BATCH_SIZE);
+      sources.forEach((s: SceneObject) => {
+        tracer.simulateBatch(s, receivers, resultsMap, i, BATCH_SIZE);
+      });
       const progress = 10 + Math.floor((i / lateRays) * 85);
       self.postMessage({ type: 'PROGRESS', progress });
     }

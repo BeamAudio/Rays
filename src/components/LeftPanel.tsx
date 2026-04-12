@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useProjectStore } from '../state/project_state';
 import { useLibraryStore } from '../state/library_state';
-import { Trash2, Box, Speaker, Upload, Mic, Layers, Home, Archive } from 'lucide-react';
+import { Trash2, Box, Speaker, Upload, Mic, Layers, Home, Archive, Volume2, VolumeX, ShieldCheck } from 'lucide-react';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
 import { generateShoebox } from '../engine/room_generator';
@@ -10,7 +10,7 @@ import { NumericInput } from './NumericInput';
 export const LeftPanel: React.FC = () => {
   const { 
     objects, selectedId, addObject, removeObject, setSelected, 
-    installedModels 
+    installedModels, updateObject
   } = useProjectStore();
   const { blocks, addBlock, removeBlock } = useLibraryStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -210,20 +210,50 @@ export const LeftPanel: React.FC = () => {
                 fontSize: '13px'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, overflow: 'hidden' }}>
                 {obj.type === 'mesh' ? <Box size={14} /> : obj.type === 'source' ? <Speaker size={14} /> : obj.type === 'plane' ? <Layers size={14} /> : <Mic size={14} />}
-                {obj.name}
+                <span style={{ 
+                  textDecoration: obj.muted ? 'line-through' : 'none', 
+                  opacity: obj.muted ? 0.5 : 1,
+                  color: obj.solo ? '#00E5FF' : 'inherit',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>{obj.name}</span>
               </div>
-              {selectedId === obj.id && (
-                <Trash2 
-                  size={14} 
-                  color="#ff4d4d" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeObject(obj.id);
-                  }}
-                />
-              )}
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {obj.type === 'source' && (
+                  <>
+                    <button 
+                      className="button" 
+                      style={{ padding: '2px', background: 'transparent', border: 'none', minWidth: '20px' }}
+                      onClick={(e) => { e.stopPropagation(); updateObject(obj.id, { muted: !obj.muted }); }}
+                      title={obj.muted ? "Unmute" : "Mute"}
+                    >
+                      {obj.muted ? <VolumeX size={14} color="#ff4d4d" /> : <Volume2 size={14} opacity={0.7} />}
+                    </button>
+                    <button 
+                      className="button" 
+                      style={{ padding: '2px', background: 'transparent', border: 'none', minWidth: '20px' }}
+                      onClick={(e) => { e.stopPropagation(); updateObject(obj.id, { solo: !obj.solo }); }}
+                      title={obj.solo ? "De-solo" : "Solo"}
+                    >
+                      <ShieldCheck size={14} color={obj.solo ? '#00E5FF' : 'currentColor'} opacity={obj.solo ? 1 : 0.4} />
+                    </button>
+                  </>
+                )}
+                {selectedId === obj.id && (
+                  <Trash2 
+                    size={14} 
+                    color="#ff4d4d" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeObject(obj.id);
+                    }}
+                  />
+                )}
+              </div>
             </div>
           ))}
         </div>

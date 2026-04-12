@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { X } from 'lucide-react';
 
 interface DraggableWindowProps {
   title: string;
@@ -138,11 +139,21 @@ export const DraggableWindow: React.FC<DraggableWindowProps> = ({
           {onClose && (
             <button
               onClick={onClose}
+              className="window-close-btn"
               style={{
-                background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px', fontSize: '14px'
+                background: 'transparent', 
+                border: 'none', 
+                color: 'rgba(255, 255, 255, 0.4)', 
+                cursor: 'pointer', 
+                padding: '4px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                borderRadius: '4px',
+                transition: 'all 0.2s'
               }}
             >
-              ×
+              <X size={14} />
             </button>
           )}
         </div>
