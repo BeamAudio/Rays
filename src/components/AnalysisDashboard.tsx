@@ -1,17 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useProjectStore } from '../state/project_state';
 import { Viewport } from './Viewport';
 import { BottomPanel } from './BottomPanel';
-import { BarChart3, Activity, Info, ChevronLeft, ChevronRight, Speaker, Mic, LayoutGrid } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
 export const AnalysisDashboard: React.FC = () => {
   const { results, setCurrentView, selectedId, setSelected } = useProjectStore();
   
   const receivers = useMemo(() => results.filter(r => !r.receiverId.includes('_')), [results]);
-  const currentReceiver = useMemo(() => 
-    receivers.find(r => r.receiverId === selectedId) || receivers[0], 
-    [receivers, selectedId]
-  );
+
+  useEffect(() => {
+    if (!selectedId && receivers.length > 0) {
+        setSelected(receivers[0].receiverId);
+    }
+  }, [receivers, selectedId]);
 
   return (
     <div style={{ display: 'flex', width: '100%', height: 'calc(100vh - 60px)', background: '#05070A', overflow: 'hidden' }}>

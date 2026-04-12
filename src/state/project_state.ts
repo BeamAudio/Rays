@@ -81,7 +81,7 @@ export const useProjectStore = create<ProjectState>()(
       maxVisibleBounces: 5,
       selectedRayIndex: null,
       selectedBand: 24,
-      currentTime: Number.MAX_SAFE_INTEGER,
+      currentTime: 500,
       ambientNoiseSPL: Array(24).fill(30),
       auralizationSettings: { sampleUrl: 'https://www.soundjay.com/buttons/sounds/beep-01a.mp3', dry: 1.0, wet: 0.5, isPlaying: false },
       

@@ -70,6 +70,10 @@ function App() {
       {currentView === 'DESIGNER' && (
         <SpeakerDesigner />
       )}
+
+      {currentView === 'ANALYSIS' && (
+        <AnalysisDashboard />
+      )}
     </div>
   );
 }
