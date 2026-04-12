@@ -242,17 +242,3 @@ export const Topbar: React.FC = () => {
     </div>
   );
 };
-Activity size={16} />
-        </button>
-        <button 
-          className="button primary" 
-          onClick={handleRunSimulation}
-          disabled={isSimulating}
-        >
-          {isSimulating ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-          {isSimulating ? `Calculating... ${simulationProgress}%` : 'Run Rays'}
-        </button>
-      </div>
-    </div>
-  );
-};
