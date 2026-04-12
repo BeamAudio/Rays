@@ -254,8 +254,8 @@ const SceneContent: React.FC = () => {
 
 export const Viewport: React.FC = () => {
   const { 
-    showRays, showHeatmap, showRoomModes, maxVisibleBounces, setVisualizationOptions, 
-    results, selectedBand, setSelectedBand, viewMode, setViewMode, selectedModeIdx
+    showRays, showHeatmap, showRoomModes, setVisualizationOptions, 
+    results, selectedBand, viewMode, setViewMode, selectedModeIdx
   } = useProjectStore();
 
   const splStats = React.useMemo(() => {
@@ -310,5 +310,8 @@ export const Viewport: React.FC = () => {
         )}
       </div>
     </div>
+  );
+};
+/div>
   );
 };

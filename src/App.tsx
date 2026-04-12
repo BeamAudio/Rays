@@ -6,7 +6,7 @@ import { BottomPanel } from './components/BottomPanel';
 import { Topbar } from './components/Topbar';
 import { Marketplace } from './components/Marketplace';
 import { SpeakerDesigner } from './components/SpeakerDesigner';
-import { AnalysisDashboard } from './components/AnalysisDashboard';
+import { AnalysisStage } from './components/AnalysisStage';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useProjectStore } from './state/project_state';
 import './App.css';
