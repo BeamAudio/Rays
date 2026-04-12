@@ -312,6 +312,3 @@ export const Viewport: React.FC = () => {
     </div>
   );
 };
-/div>
-  );
-};
