@@ -161,14 +161,16 @@ export const useProjectStore = create<ProjectState>()(
     {
       name: 'beam-audio-project',
       version: 2,
-      storage: createJSONStorage(() => localStorage), // Stable fallback to localStorage
+      storage: createJSONStorage(() => localStorage),
+      // Ensure EVERYTHING important is partialized for storage
       partialize: (state) => ({
         objects: state.objects,
+        installedModels: state.installedModels,
+        environmentSettings: state.environmentSettings,
         showRays: state.showRays,
         showHeatmap: state.showHeatmap,
-        maxVisibleBounces: state.maxVisibleBounces,
-        installedModels: state.installedModels
-      } as any),
+        maxVisibleBounces: state.maxVisibleBounces
+      }),
       onRehydrateStorage: () => (state, error) => {
         if (error) console.error('[Hydration Error]:', error);
         if (state) {
