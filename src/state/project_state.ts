@@ -5,7 +5,7 @@ import type {
   EnvironmentSettings
 } from '../types';
 
-export type Perspective = 'WORKSPACE' | 'MARKETPLACE' | 'DESIGNER';
+export type Perspective = 'WORKSPACE' | 'MARKETPLACE' | 'DESIGNER' | 'ANALYSIS';
 
 export interface ProjectState {
   currentView: Perspective;
@@ -21,7 +21,7 @@ export interface ProjectState {
   showRays: boolean;
   showHeatmap: boolean;
   showRoomModes: boolean;
-  selectedMode: [number, number, number];
+  selectedModeIdx: number;
   maxVisibleBounces: number;
   selectedRayIndex: number | null;
   selectedBand: number; // 0=50Hz ... 23=10kHz, 24=Broadband
@@ -41,7 +41,7 @@ export interface ProjectState {
   setSimulationResults: (results: SimulationResult[]) => void;
   setSimulating: (isSimulating: boolean, progress?: number) => void;
   toggleAnalysis: (show?: boolean) => void;
-  setVisualizationOptions: (options: { showRays?: boolean; showHeatmap?: boolean; showRoomModes?: boolean; selectedMode?: [number, number, number]; maxVisibleBounces?: number }) => void;
+  setVisualizationOptions: (options: { showRays?: boolean; showHeatmap?: boolean; showRoomModes?: boolean; selectedModeIdx?: number; maxVisibleBounces?: number }) => void;
   setAmbientNoise: (noise: number[]) => void;
   setAuralization: (settings: Partial<ProjectState['auralizationSettings']>) => void;
   setCurrentView: (view: Perspective) => void;
@@ -77,7 +77,7 @@ export const useProjectStore = create<ProjectState>()(
       showRays: true,
       showHeatmap: true,
       showRoomModes: false,
-      selectedMode: [1, 0, 0],
+      selectedModeIdx: 0,
       maxVisibleBounces: 5,
       selectedRayIndex: null,
       selectedBand: 24,

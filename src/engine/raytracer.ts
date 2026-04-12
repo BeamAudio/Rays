@@ -258,8 +258,9 @@ export class RayTracer {
         const elevation = Math.asin(THREE.MathUtils.clamp(arrivalDir.y, -1, 1));
         ir.angles.push([azimuth, elevation]);
         
-        if (ir.paths.length < 500) {
-            ir.paths.push({ points, energy: energy[3], time, order });
+        // Store path ONLY for this specific hit receiver
+        if (ir.paths.length < 100) {
+            ir.paths.push({ points: [...points], energy: energy[13], time, order });
         }
     });
   }
@@ -316,7 +317,7 @@ export class RayTracer {
               if (this.totalPathsCollected < this.MAX_PATHS && ir.paths.length < 50) {
                  ir.paths.push({
                    points: [...history, [recPos.x, recPos.y, recPos.z]],
-                   energy: energy[3],
+                   energy: energy[13],
                    time: timeToReceiver,
                    order: currentOrder
                  });

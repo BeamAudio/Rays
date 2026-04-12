@@ -64,7 +64,8 @@ self.onmessage = (e: MessageEvent) => {
     resultsMap.forEach((ir, recId) => {
        const metrics = calculateMetrics({
           times: ir.times,
-          energies: ir.energies
+          energies: ir.energies,
+          orders: ir.orders
        });
 
        const isGridPoint = recId.includes('_');
@@ -72,8 +73,7 @@ self.onmessage = (e: MessageEvent) => {
        results.push({
           receiverId: recId,
           metrics,
-          // Only send rayPaths for non-grid points to keep UI clean, 
-          // though RayTracer already caps them
+          // Only send rayPaths for non-grid points to keep UI clean
           rayPaths: isGridPoint ? [] : ir.paths
        });
 

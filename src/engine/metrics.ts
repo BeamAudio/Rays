@@ -37,7 +37,7 @@ export function calculateMetrics(ir: ImpulseResponse, ambientNoiseSPL: number[] 
     }
   });
 
-  const broadband = energyGrid.map(bin => bin[13]); // Use 1kHz for etc
+  const broadband = energyGrid.map(bin => bin[13]); // Use 1kHz for default etc
   
   const maxBroadband = Math.max(...broadband, 1e-12);
   metrics.etc = Array.from(broadband).map((e, i) => ({
@@ -45,18 +45,15 @@ export function calculateMetrics(ir: ImpulseResponse, ambientNoiseSPL: number[] 
     energy: Math.max(-90, 10 * Math.log10(e / maxBroadband + 1e-12))
   }));
 
+  metrics.energyGrid = energyGrid;
+
   // Capture individual arrivals for high-detail ETC visualization
   if (times && orders && energies) {
     metrics.arrivals = times.map((t, i) => ({
       time: t,
-      energy: energies[i][13], // Use 1kHz band for arrival energy
+      energy: [...energies[i]], // Store ALL bands for each arrival
       order: orders[i]
     })).sort((a,b) => a.time - b.time);
-
-    // Normalize arrival energy relative to the same max used for ETC
-    metrics.arrivals.forEach(arr => {
-        arr.energy = Math.max(-90, 10 * Math.log10(arr.energy / maxBroadband + 1e-12));
-    });
   }
 
   for (let f = 0; f < numOctaves; f++) {

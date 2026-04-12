@@ -53,7 +53,8 @@ export interface AcousticMetrics {
   spl: number[];
   sti: number; // Broadband STI (0-1)
   etc: { time: number; energy: number }[];
-  arrivals?: { time: number; energy: number; order: number }[];
+  arrivals?: { time: number; energy: number[]; order: number }[];
+  energyGrid?: number[][]; // [binIdx][octaveIdx] for dynamic filtering
 }
 
 export interface SimulationResult {

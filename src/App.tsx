@@ -6,6 +6,7 @@ import { BottomPanel } from './components/BottomPanel';
 import { Topbar } from './components/Topbar';
 import { Marketplace } from './components/Marketplace';
 import { SpeakerDesigner } from './components/SpeakerDesigner';
+import { AnalysisDashboard } from './components/AnalysisDashboard';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useProjectStore } from './state/project_state';
 import './App.css';
@@ -74,3 +75,4 @@ function App() {
 }
 
 export default App;
+fault App;

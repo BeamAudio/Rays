@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Play, Save, Loader2, FolderOpen, Layout, Globe, PenTool, RotateCcw, RotateCw, Activity, Camera } from 'lucide-react';
+import { Play, Save, Loader2, FolderOpen, Layout, Globe, PenTool, RotateCcw, RotateCw, Activity, Camera, BarChart3 } from 'lucide-react';
 import { useProjectStore } from '../state/project_state';
 import * as THREE from 'three';
 import SimulationWorker from '../engine/simulation_worker?worker';
@@ -143,7 +143,8 @@ export const Topbar: React.FC = () => {
             auralizer.updateIR(e.data.rawIRs[primaryResult.receiverId]);
           }
         }
-        toggleAnalysis(true);
+        setCurrentView('ANALYSIS');
+        toggleAnalysis(false);
       } else if (e.data.type === 'ERROR') {
         alert('Simulation Error: ' + e.data.error);
         setSimulating(false);
@@ -157,7 +158,7 @@ export const Topbar: React.FC = () => {
 
   return (
     <div className="topbar">
-      <div className="logo" style={{ minWidth: '200px' }}>
+      <div className="logo" style={{ minWidth: '200px', cursor: 'pointer' }} onClick={() => setCurrentView('WORKSPACE')}>
         BEAM <span>RAYS</span>
       </div>
       
@@ -228,6 +229,20 @@ export const Topbar: React.FC = () => {
           }}
         >
           <Activity size={16} />
+        </button>
+        <button 
+          className="button primary" 
+          onClick={handleRunSimulation}
+          disabled={isSimulating}
+        >
+          {isSimulating ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+          {isSimulating ? `Calculating... ${simulationProgress}%` : 'Run Rays'}
+        </button>
+      </div>
+    </div>
+  );
+};
+Activity size={16} />
         </button>
         <button 
           className="button primary" 
