@@ -186,7 +186,7 @@ const VolumetricModes: React.FC<{ roomDims: { L: number, H: number, W: number },
 };
 
 const SceneContent: React.FC = () => {
-  const { objects, selectedId, setSelected, results, showRays, maxVisibleBounces, selectedRayIndex, setSelectedRayIndex, currentTime, showRoomModes, selectedModeIdx } = useProjectStore();
+  const { objects, selectedId, setSelected, results, showRays, selectedRayIndex, setSelectedRayIndex, currentTime, showRoomModes, selectedModeIdx } = useProjectStore();
   const selectedResult = results.find(r => r.receiverId === selectedId);
   const displayResult = selectedResult;
 
