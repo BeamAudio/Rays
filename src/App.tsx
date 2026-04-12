@@ -72,7 +72,7 @@ function App() {
       )}
 
       {currentView === 'ANALYSIS' && (
-        <AnalysisDashboard />
+        <AnalysisStage />
       )}
     </div>
   );

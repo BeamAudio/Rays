@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '../state/project_state';
-import { Play, Pause, Mic2, Download, BarChart2, Activity, Waves, FileText, ChevronRight } from 'lucide-react';
+import { Play, Pause, BarChart2, Activity, Waves, FileText } from 'lucide-react';
 import { auralizer } from '../engine/auralizer';
 
 type Tab = 'summary' | 'signal' | 'distribution';
