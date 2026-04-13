@@ -253,9 +253,9 @@ const SceneContent: React.FC = () => {
 };
 
 export const Viewport: React.FC = () => {
-  const { 
-    showRays, showHeatmap, showRoomModes, setVisualizationOptions, 
-    results, selectedBand, viewMode, setViewMode, selectedModeIdx
+  const {
+    showRays, showHeatmap, showRoomModes, setVisualizationOptions,
+    results, selectedBand, viewMode, setViewMode
   } = useProjectStore();
 
   const splStats = React.useMemo(() => {
@@ -272,40 +272,32 @@ export const Viewport: React.FC = () => {
         <SceneContent />
       </Canvas>
 
-      <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', gap: '5px', zIndex: 100 }}>
-        <button className={`button ${viewMode === '2D' ? 'primary' : ''}`} onClick={() => setViewMode('2D')}>2D Plan</button>
-        <button className={`button ${viewMode === '3D' ? 'primary' : ''}`} onClick={() => setViewMode('3D')}>3D View</button>
-      </div>
+      {/* Compacted viewport toolbar at bottom */}
+      <div style={{ position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(10,10,10,0.9)', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--border-color)', backdropFilter: 'blur(8px)', zIndex: 100 }}>
+        <div style={{ display: 'flex', gap: '2px', marginRight: '8px', borderRight: '1px solid var(--border-color)', paddingRight: '8px' }}>
+          <button className={`button small ${viewMode === '2D' ? 'primary' : ''}`} onClick={() => setViewMode('2D')} style={{ padding: '3px 8px', fontSize: '10px' }}>2D</button>
+          <button className={`button small ${viewMode === '3D' ? 'primary' : ''}`} onClick={() => setViewMode('3D')} style={{ padding: '3px 8px', fontSize: '10px' }}>3D</button>
+        </div>
 
-      <div style={{ position: 'absolute', top: '20px', left: '20px', background: 'rgba(10,10,10,0.85)', padding: '15px', borderRadius: '6px', border: '1px solid var(--border-color)', backdropFilter: 'blur(5px)', width: '250px', zIndex: 100 }}>
-        <h4 style={{ fontSize: '11px', color: 'var(--text-primary)', marginBottom: '10px', textTransform: 'uppercase' }}>Visualization</h4>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Heatmaps</label>
-          <input type="checkbox" checked={showHeatmap} onChange={e => setVisualizationOptions({ showHeatmap: e.target.checked })} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Room Modes</label>
-          <input type="checkbox" checked={showRoomModes} onChange={e => setVisualizationOptions({ showRoomModes: e.target.checked })} />
-        </div>
-        {showRoomModes && (
-            <div style={{ marginBottom: '10px' }}>
-                <label style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>Select Mode Index</label>
-                <input type="range" min="0" max="20" value={selectedModeIdx} onChange={e => setVisualizationOptions({ selectedModeIdx: parseInt(e.target.value) })} style={{ width: '100%' }} />
-            </div>
-        )}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-          <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Rays</label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
           <input type="checkbox" checked={showRays} onChange={e => setVisualizationOptions({ showRays: e.target.checked })} />
-        </div>
-        
+          Rays
+        </label>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+          <input type="checkbox" checked={showHeatmap} onChange={e => setVisualizationOptions({ showHeatmap: e.target.checked })} />
+          Heatmap
+        </label>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+          <input type="checkbox" checked={showRoomModes} onChange={e => setVisualizationOptions({ showRoomModes: e.target.checked })} />
+          Modes
+        </label>
+
         {showHeatmap && (
-          <div style={{ marginTop: '15px' }}>
-            <h5 style={{ fontSize: '9px', color: 'var(--text-secondary)', marginBottom: '5px' }}>SPL LEGEND</h5>
-            <div style={{ height: '10px', width: '100%', background: 'linear-gradient(to right, hsl(252, 100%, 50%), hsl(180, 100%, 50%), hsl(108, 100%, 50%), hsl(36, 100%, 50%), hsl(0, 100%, 50%))', borderRadius: '2px' }}></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              <span>{splStats.min.toFixed(1)} dB</span>
-              <span>{splStats.max.toFixed(1)} dB</span>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px', paddingLeft: '8px', borderLeft: '1px solid var(--border-color)' }}>
+            <div style={{ width: '40px', height: '6px', background: 'linear-gradient(to right, hsl(252, 100%, 50%), hsl(180, 100%, 50%), hsl(108, 100%, 50%), hsl(36, 100%, 50%), hsl(0, 100%, 50%))', borderRadius: '2px' }}></div>
+            <span style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>{splStats.min.toFixed(0)}-{splStats.max.toFixed(0)}dB</span>
           </div>
         )}
       </div>

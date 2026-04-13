@@ -27,85 +27,16 @@ const selectStyle: React.CSSProperties = {
 };
 
 export const RightPanel: React.FC = () => {
-  const { 
+  const {
     objects, selectedId, updateObject,
-    environmentSettings, setEnvironmentSettings,
     selectedBand, setSelectedBand,
     results
   } = useProjectStore();
-  
+
   const selectedObject = objects.find(o => o.id === selectedId);
 
   if (!selectedObject) {
-    return (
-      <DraggableWindow 
-        title="Global Settings" 
-        defaultPosition={{ x: window.innerWidth - 300, y: 60 }} 
-        defaultSize={{ width: 280, height: 400 }}
-      >
-        <div className="sidebar-section properties">
-          <h3>Environment (ISO 9613-1)</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '10px' }}>
-            <div className="prop-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <NumericInput 
-                label="Temp (°C)"
-                value={environmentSettings.temperature} 
-                onChange={(v) => setEnvironmentSettings({ temperature: v })}
-                step={0.5}
-              />
-              <NumericInput 
-                label="Humidity (%)"
-                value={environmentSettings.humidity} 
-                onChange={(v) => setEnvironmentSettings({ humidity: v })}
-                step={1}
-                min={0}
-                max={100}
-              />
-            </div>
-            <div className="prop-group">
-              <NumericInput 
-                label="Pressure (kPa)"
-                value={environmentSettings.pressure} 
-                onChange={(v) => setEnvironmentSettings({ pressure: v })}
-                step={0.1}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="sidebar-section properties">
-          <h3>Simulation Engine</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '10px' }}>
-            <div className="prop-group">
-              <NumericInput 
-                label="Number of Rays"
-                step={1000}
-                value={environmentSettings.rayCount} 
-                onChange={(v) => setEnvironmentSettings({ rayCount: Math.round(v) })}
-                min={100}
-                max={200000}
-              />
-            </div>
-            <div className="prop-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <NumericInput 
-                label="Max Bounces"
-                value={environmentSettings.maxBounces} 
-                onChange={(v) => setEnvironmentSettings({ maxBounces: Math.round(v) })}
-                min={1}
-                max={100}
-              />
-              <NumericInput 
-                label="ISM Order"
-                value={environmentSettings.ismOrder} 
-                onChange={(v) => setEnvironmentSettings({ ismOrder: Math.round(v) })}
-                min={0}
-                max={5}
-              />
-            </div>
-          </div>
-        </div>
-      </DraggableWindow>
-    );
+    return null;
   }
 
   if (results.length > 0 && selectedObject.type === 'receiver') {

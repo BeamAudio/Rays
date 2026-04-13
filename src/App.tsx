@@ -53,7 +53,7 @@ function App() {
           <LeftPanel />
           <div className="viewport-container" style={{ flex: 1, position: 'relative', zIndex: 1 }}>
             <ErrorBoundary>
-              <Suspense fallback={<div className="loading">Initializing Beam Audio...</div>}>
+              <Suspense fallback={<div className="loading">Loading Beam Audio Rays...</div>}>
                 <Viewport />
               </Suspense>
             </ErrorBoundary>

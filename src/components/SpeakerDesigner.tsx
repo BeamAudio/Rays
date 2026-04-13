@@ -86,7 +86,7 @@ export const SpeakerDesigner: React.FC = () => {
       <div style={{ width: '400px', borderRight: '1px solid var(--border-color)', padding: '20px', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '30px', color: 'var(--accent-primary)' }}>
           <PenTool size={24} />
-          <h2 style={{ fontSize: '20px', fontWeight: '800', letterSpacing: '0.05em' }}>SPEAKER DESIGNER</h2>
+          <h2 style={{ fontSize: '20px', fontWeight: '800', letterSpacing: '0.05em' }}>BEAM AUDIO RAYS</h2>
         </div>
 
         <section style={{ marginBottom: '30px' }}>

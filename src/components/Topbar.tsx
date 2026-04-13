@@ -158,85 +158,93 @@ export const Topbar: React.FC = () => {
 
   return (
     <div className="topbar">
-      <div className="logo" style={{ minWidth: '200px', cursor: 'pointer' }} onClick={() => setCurrentView('WORKSPACE')}>
-        BEAM <span>RAYS</span>
+      <div className="logo" style={{ minWidth: '180px', cursor: 'pointer' }} onClick={() => setCurrentView('WORKSPACE')}>
+        BEAM <span>AUDIO</span> RAYS
       </div>
-      
-      <div className="workspace-tabs" style={{ display: 'flex', gap: '5px', background: 'var(--bg-tertiary)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-        <button 
-          className={`button ${currentView === 'WORKSPACE' ? 'primary' : ''}`} 
-          style={{ gap: '8px', border: currentView === 'WORKSPACE' ? undefined : 'none' }}
+
+      <div className="workspace-tabs" style={{ display: 'flex', gap: '4px', background: 'var(--bg-tertiary)', padding: '3px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+        <button
+          className={`button ${currentView === 'WORKSPACE' ? 'primary' : ''}`}
+          style={{ gap: '6px', border: currentView === 'WORKSPACE' ? undefined : 'none', padding: '5px 10px', fontSize: '11px' }}
           onClick={() => setCurrentView('WORKSPACE')}
         >
-          <Layout size={14} /> Workspace
+          <Layout size={13} /> Workspace
         </button>
-        <button 
-          className={`button ${currentView === 'MARKETPLACE' ? 'primary' : ''}`} 
-          style={{ gap: '8px', border: currentView === 'MARKETPLACE' ? undefined : 'none' }}
+        <button
+          className={`button ${currentView === 'MARKETPLACE' ? 'primary' : ''}`}
+          style={{ gap: '6px', border: currentView === 'MARKETPLACE' ? undefined : 'none', padding: '5px 10px', fontSize: '11px' }}
           onClick={() => setCurrentView('MARKETPLACE')}
         >
-          <Globe size={14} /> Marketplace
+          <Globe size={13} /> Marketplace
         </button>
-        <button 
-          className={`button ${currentView === 'DESIGNER' ? 'primary' : ''}`} 
-          style={{ gap: '8px', border: currentView === 'DESIGNER' ? undefined : 'none' }}
+        <button
+          className={`button ${currentView === 'DESIGNER' ? 'primary' : ''}`}
+          style={{ gap: '6px', border: currentView === 'DESIGNER' ? undefined : 'none', padding: '5px 10px', fontSize: '11px' }}
           onClick={() => setCurrentView('DESIGNER')}
         >
-          <PenTool size={14} /> Designer
+          <PenTool size={13} /> Designer
         </button>
       </div>
 
-      <div className="topbar-actions" style={{ display: 'flex', gap: '8px', minWidth: '240px', justifyContent: 'flex-end' }}>
-        <div style={{ display: 'flex', gap: '4px', borderRight: '1px solid var(--border-color)', paddingRight: '10px', marginRight: '5px' }}>
-          <button 
-            className="button" 
-            onClick={undo} 
-            disabled={!past || past.length === 0} 
+      <div className="topbar-actions" style={{ display: 'flex', gap: '4px', minWidth: '200px', justifyContent: 'flex-end', alignItems: 'center' }}>
+        {/* Undo/Redo group */}
+        <div style={{ display: 'flex', gap: '2px', borderRight: '1px solid var(--border-color)', paddingRight: '6px' }}>
+          <button
+            className="button"
+            onClick={undo}
+            disabled={!past || past.length === 0}
             title="Undo (Ctrl+Z)"
-            style={{ padding: '6px' }}
+            style={{ padding: '5px' }}
           >
-            <RotateCcw size={16} opacity={(!past || past.length === 0) ? 0.3 : 1} />
+            <RotateCcw size={14} opacity={(!past || past.length === 0) ? 0.3 : 1} />
           </button>
-          <button 
-            className="button" 
-            onClick={redo} 
-            disabled={!future || future.length === 0} 
+          <button
+            className="button"
+            onClick={redo}
+            disabled={!future || future.length === 0}
             title="Redo (Ctrl+Y)"
-            style={{ padding: '6px' }}
+            style={{ padding: '5px' }}
           >
-            <RotateCw size={16} opacity={(!future || future.length === 0) ? 0.3 : 1} />
+            <RotateCw size={14} opacity={(!future || future.length === 0) ? 0.3 : 1} />
           </button>
         </div>
 
+        {/* File operations group */}
         <input type="file" ref={loadRef} style={{ display: 'none' }} accept=".json" onChange={handleLoadProject} />
-        <button className="button" onClick={() => loadRef.current?.click()} title="Open Project">
-          <FolderOpen size={16} />
+        <button className="button" onClick={() => loadRef.current?.click()} title="Open Project" style={{ padding: '5px' }}>
+          <FolderOpen size={14} />
         </button>
-        <button className="button" onClick={handleSaveProject} title="Save Project">
-          <Save size={16} />
+        <button className="button" onClick={handleSaveProject} title="Save Project" style={{ padding: '5px' }}>
+          <Save size={14} />
         </button>
-        <button className="button" onClick={handleCaptureSnapshot} title="Take Snapshot">
-          <Camera size={16} />
+        <button className="button" onClick={handleCaptureSnapshot} title="Take Snapshot" style={{ padding: '5px' }}>
+          <Camera size={14} />
         </button>
-        <button 
-          className={`button ${showAnalysis ? 'active-glow' : ''}`} 
-          onClick={() => toggleAnalysis()} 
+
+        {/* Analysis toggle */}
+        <button
+          className={`button ${showAnalysis ? 'active-glow' : ''}`}
+          onClick={() => toggleAnalysis()}
           title="Toggle Analysis Console"
-          style={{ 
+          style={{
+            padding: '5px',
             background: showAnalysis ? 'rgba(0, 229, 255, 0.15)' : undefined,
             color: showAnalysis ? '#00E5FF' : undefined,
             borderColor: showAnalysis ? '#00E5FF' : undefined
           }}
         >
-          <Activity size={16} />
+          <Activity size={14} />
         </button>
-        <button 
-          className="button primary" 
+
+        {/* Primary action */}
+        <button
+          className="button primary"
           onClick={handleRunSimulation}
           disabled={isSimulating}
+          style={{ padding: '5px 12px', fontSize: '11px', marginLeft: '4px' }}
         >
-          {isSimulating ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-          {isSimulating ? `Calculating... ${simulationProgress}%` : 'Run Rays'}
+          {isSimulating ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+          {isSimulating ? `${simulationProgress}%` : 'Run Rays'}
         </button>
       </div>
     </div>

@@ -1,8 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
-  --font-main: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-brand: 'Outfit', sans-serif;
+  --font-main: 'League Spartan', system-ui, -apple-system, sans-serif;
+  --font-brand: 'League Spartan', sans-serif;
   
   --bg-primary: #0F1115;
   --bg-secondary: #16191E;
@@ -46,7 +46,12 @@ h1, h2, h3, .brand {
   font-family: var(--font-brand);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.05em;
+}
+
+p, span, div, label, button, input, select, textarea {
+  font-family: var(--font-main);
+  font-weight: 400;
 }
 
 ::selection {

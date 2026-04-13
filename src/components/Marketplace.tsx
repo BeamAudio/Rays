@@ -60,7 +60,7 @@ export const Marketplace: React.FC = () => {
   return (
     <div className="marketplace-container" style={{ padding: '40px', height: 'calc(100vh - 60px)', overflowY: 'auto' }}>
       <div className="marketplace-header" style={{ maxWidth: '1000px', margin: '0 auto 40px auto' }}>
-        <h1 style={{ fontSize: '32px', marginBottom: '10px' }}>Beam Audio <span style={{ color: 'var(--accent-primary)' }}>Marketplace</span></h1>
+        <h1 style={{ fontSize: '32px', marginBottom: '10px' }}>Beam Audio <span style={{ color: 'var(--accent-primary)' }}>Rays</span></h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '30px' }}>Explore professionally measured and community-authored speaker profiles for your Rays simulations.</p>
         
         <div style={{ position: 'relative', maxWidth: '500px' }}>
