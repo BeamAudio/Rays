@@ -61,7 +61,16 @@ export const Marketplace: React.FC = () => {
     <div className="marketplace-container" style={{ padding: '40px', height: 'calc(100vh - 60px)', overflowY: 'auto' }}>
       <div className="marketplace-header" style={{ maxWidth: '1000px', margin: '0 auto 40px auto' }}>
         <h1 style={{ fontSize: '32px', marginBottom: '10px' }}>Beam Audio <span style={{ color: 'var(--accent-primary)' }}>Rays</span></h1>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '30px' }}>Explore professionally measured and community-authored speaker profiles for your Rays simulations.</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '30px' }}>Explore professionally measured and community-authored speaker profiles for your Rays simulations.</p>
+          <button 
+            className="button" 
+            onClick={() => window.open('https://github.com/BeamAudio/Rays/compare', '_blank')}
+            style={{ marginBottom: '30px' }}
+          >
+            <Check size={14} /> Contribute Model
+          </button>
+        </div>
         
         <div style={{ position: 'relative', maxWidth: '500px' }}>
           <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} size={18} />
