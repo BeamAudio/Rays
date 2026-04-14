@@ -25,6 +25,7 @@ export interface ProjectState {
   maxVisibleBounces: number;
   selectedRayIndex: number | null;
   selectedBand: number; // 0=50Hz ... 23=10kHz, 24=Broadband
+  bandMode: '1/3' | '1'; // 1/3 octave (24 bands) or 1 octave (8 bands)
   currentTime: number; // ms, for scrubber
   ambientNoiseSPL: number[]; // 24 octave bands
   auralizationSettings: { sampleUrl: string; dry: number; wet: number; isPlaying: boolean; };
@@ -36,6 +37,8 @@ export interface ProjectState {
   setSelected: (id: string | null) => void;
   setSelectedRayIndex: (index: number | null) => void;
   setSelectedBand: (index: number) => void;
+  setBandMode: (mode: '1/3' | '1') => void;
+  toggleBandMode: () => void;
   setCurrentTime: (time: number) => void;
   updateObject: (id: string, updates: Partial<SceneObject>) => void;
   setSimulationResults: (results: SimulationResult[]) => void;
@@ -81,6 +84,7 @@ export const useProjectStore = create<ProjectState>()(
       maxVisibleBounces: 5,
       selectedRayIndex: null,
       selectedBand: 24,
+      bandMode: '1/3',
       currentTime: 500,
       ambientNoiseSPL: Array(24).fill(30),
       auralizationSettings: { sampleUrl: 'https://www.soundjay.com/buttons/sounds/beep-01a.mp3', dry: 1.0, wet: 0.5, isPlaying: false },
@@ -89,6 +93,8 @@ export const useProjectStore = create<ProjectState>()(
         environmentSettings: { ...state.environmentSettings, ...settings } 
       })),
       setCurrentTime: (time) => set({ currentTime: time }),
+      setBandMode: (mode) => set({ bandMode: mode }),
+      toggleBandMode: () => set((state) => ({ bandMode: state.bandMode === '1' ? '1/3' : '1' })),
       
       undo: () => {
         const { past, future, objects } = get();

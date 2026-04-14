@@ -1,5 +1,9 @@
 import React, { useRef } from 'react';
-import { Play, Save, Loader2, FolderOpen, Layout, Globe, PenTool, RotateCcw, RotateCw, Activity, Camera, Maximize2, Minimize2 } from 'lucide-react';
+import { 
+  Play, Save, Loader2, FolderOpen, Layout, Globe, PenTool, 
+  RotateCcw, RotateCw, Activity, Camera, Maximize2, Minimize2,
+  Box, Layers, Zap, Eye
+} from 'lucide-react';
 import { useProjectStore } from '../state/project_state';
 import * as THREE from 'three';
 import SimulationWorker from '../engine/simulation_worker?worker';
@@ -10,7 +14,8 @@ export const Topbar: React.FC = () => {
     objects, setSimulating, setSimulationResults,
     isSimulating, simulationProgress, environmentSettings,
     currentView, setCurrentView, undo, redo, past, future,
-    showAnalysis, toggleAnalysis
+    showAnalysis, toggleAnalysis,
+    viewMode, setViewMode, showRays, showHeatmap, showRoomModes, setVisualizationOptions
   } = useProjectStore();
 
   const loadRef = useRef<HTMLInputElement>(null);
@@ -173,98 +178,129 @@ export const Topbar: React.FC = () => {
     };
   };
 
+  const navButtonStyle = (active: boolean): React.CSSProperties => ({
+    gap: '6px', 
+    border: 'none',
+    padding: '6px 12px', 
+    fontSize: '11px',
+    background: active ? 'rgba(255,255,255,0.05)' : 'transparent',
+    color: active ? 'var(--accent-primary)' : 'var(--text-secondary)',
+    borderRadius: '4px',
+    transition: 'all 0.2s',
+    fontWeight: active ? '600' : '400'
+  });
+
+  const toggleButtonStyle = (active: boolean): React.CSSProperties => ({
+    padding: '6px',
+    background: active ? 'rgba(0, 229, 255, 0.1)' : 'transparent',
+    color: active ? 'var(--accent-primary)' : 'var(--text-secondary)',
+    border: 'none',
+    borderRadius: '4px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '10px',
+    cursor: 'pointer'
+  });
+
   return (
     <div className="topbar">
-      <div className="logo" style={{ minWidth: '180px', cursor: 'pointer' }} onClick={() => setCurrentView('WORKSPACE')}>
-        BEAM <span>AUDIO</span> RAYS
+      <div className="logo" style={{ minWidth: '160px', cursor: 'pointer', fontSize: '14px', letterSpacing: '1px' }} onClick={() => setCurrentView('WORKSPACE')}>
+        BEAM <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>AUDIO</span> RAYS
       </div>
 
-      <div className="workspace-tabs" style={{ display: 'flex', gap: '4px', background: 'var(--bg-tertiary)', padding: '3px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+      <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '2px', borderRadius: '6px' }}>
         <button
-          className={`button ${currentView === 'WORKSPACE' ? 'primary' : ''}`}
-          style={{ gap: '6px', border: currentView === 'WORKSPACE' ? undefined : 'none', padding: '5px 10px', fontSize: '11px' }}
+          className="button"
+          style={navButtonStyle(currentView === 'WORKSPACE')}
           onClick={() => setCurrentView('WORKSPACE')}
         >
-          <Layout size={13} /> Workspace
+          <Layout size={14} /> Workspace
         </button>
         <button
-          className={`button ${currentView === 'MARKETPLACE' ? 'primary' : ''}`}
-          style={{ gap: '6px', border: currentView === 'MARKETPLACE' ? undefined : 'none', padding: '5px 10px', fontSize: '11px' }}
-          onClick={() => setCurrentView('MARKETPLACE')}
+          className="button"
+          style={navButtonStyle(currentView === 'ANALYSIS')}
+          onClick={() => setCurrentView('ANALYSIS')}
         >
-          <Globe size={13} /> Marketplace
+          <Activity size={14} /> Analysis
         </button>
         <button
-          className={`button ${currentView === 'DESIGNER' ? 'primary' : ''}`}
-          style={{ gap: '6px', border: currentView === 'DESIGNER' ? undefined : 'none', padding: '5px 10px', fontSize: '11px' }}
+          className="button"
+          style={navButtonStyle(currentView === 'DESIGNER')}
           onClick={() => setCurrentView('DESIGNER')}
         >
-          <PenTool size={13} /> Designer
+          <PenTool size={14} /> Designer
+        </button>
+      </div>
+
+      {/* Middle Context Toggles */}
+      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '4px 12px', borderRadius: '20px', border: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', gap: '4px', borderRight: '1px solid var(--border-color)', paddingRight: '8px' }}>
+           <button 
+             style={toggleButtonStyle(viewMode === '2D')} 
+             onClick={() => setViewMode('2D')}
+             title="2D Top View"
+           >
+             2D
+           </button>
+           <button 
+             style={toggleButtonStyle(viewMode === '3D')} 
+             onClick={() => setViewMode('3D')}
+             title="3D Perspective"
+           >
+             3D
+           </button>
+        </div>
+
+        <button 
+          style={toggleButtonStyle(showRays)} 
+          onClick={() => setVisualizationOptions({ showRays: !showRays })}
+          title="Toggle Ray Paths"
+        >
+          <Zap size={14} /> <span style={{ display: window.innerWidth > 1000 ? 'inline' : 'none' }}>Rays</span>
+        </button>
+        
+        <button 
+          style={toggleButtonStyle(showHeatmap)} 
+          onClick={() => setVisualizationOptions({ showHeatmap: !showHeatmap })}
+          title="Toggle Acoustic Heatmap"
+        >
+          <Layers size={14} /> <span style={{ display: window.innerWidth > 1000 ? 'inline' : 'none' }}>Heatmap</span>
+        </button>
+
+        <button 
+          style={toggleButtonStyle(showRoomModes)} 
+          onClick={() => setVisualizationOptions({ showRoomModes: !showRoomModes })}
+          title="Toggle Room Modes"
+        >
+          <Box size={14} /> <span style={{ display: window.innerWidth > 1000 ? 'inline' : 'none' }}>Modes</span>
         </button>
       </div>
 
       <div className="topbar-actions" style={{ display: 'flex', gap: '4px', minWidth: '200px', justifyContent: 'flex-end', alignItems: 'center' }}>
-        {/* Undo/Redo group */}
+        {/* File operations group */}
         <div style={{ display: 'flex', gap: '2px', borderRight: '1px solid var(--border-color)', paddingRight: '6px' }}>
-          <button
-            className="button"
-            onClick={undo}
-            disabled={!past || past.length === 0}
-            title="Undo (Ctrl+Z)"
-            style={{ padding: '5px' }}
-          >
-            <RotateCcw size={14} opacity={(!past || past.length === 0) ? 0.3 : 1} />
+          <input type="file" ref={loadRef} style={{ display: 'none' }} accept=".json" onChange={handleLoadProject} />
+          <button className="button" onClick={() => loadRef.current?.click()} title="Open Project" style={{ padding: '6px' }}>
+            <FolderOpen size={14} />
           </button>
-          <button
-            className="button"
-            onClick={redo}
-            disabled={!future || future.length === 0}
-            title="Redo (Ctrl+Y)"
-            style={{ padding: '5px' }}
-          >
-            <RotateCw size={14} opacity={(!future || future.length === 0) ? 0.3 : 1} />
+          <button className="button" onClick={handleSaveProject} title="Save Project" style={{ padding: '6px' }}>
+            <Save size={14} />
+          </button>
+          <button className="button" onClick={handleCaptureSnapshot} title="Take Snapshot" style={{ padding: '6px' }}>
+            <Camera size={14} />
           </button>
         </div>
-
-        {/* File operations group */}
-        <input type="file" ref={loadRef} style={{ display: 'none' }} accept=".json" onChange={handleLoadProject} />
-        <button className="button" onClick={() => loadRef.current?.click()} title="Open Project" style={{ padding: '5px' }}>
-          <FolderOpen size={14} />
-        </button>
-        <button className="button" onClick={handleSaveProject} title="Save Project" style={{ padding: '5px' }}>
-          <Save size={14} />
-        </button>
-        <button className="button" onClick={handleCaptureSnapshot} title="Take Snapshot" style={{ padding: '5px' }}>
-          <Camera size={14} />
-        </button>
-        <button className="button" onClick={toggleFullscreen} title="Toggle Fullscreen" style={{ padding: '5px' }}>
-          {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-        </button>
-
-        {/* Analysis toggle */}
-        <button
-          className={`button ${showAnalysis ? 'active-glow' : ''}`}
-          onClick={() => toggleAnalysis()}
-          title="Toggle Analysis Console"
-          style={{
-            padding: '5px',
-            background: showAnalysis ? 'rgba(0, 229, 255, 0.15)' : undefined,
-            color: showAnalysis ? '#00E5FF' : undefined,
-            borderColor: showAnalysis ? '#00E5FF' : undefined
-          }}
-        >
-          <Activity size={14} />
-        </button>
 
         {/* Primary action */}
         <button
           className="button primary"
           onClick={handleRunSimulation}
           disabled={isSimulating}
-          style={{ padding: '5px 12px', fontSize: '11px', marginLeft: '4px' }}
+          style={{ padding: '6px 16px', fontSize: '11px', marginLeft: '4px', borderRadius: '40px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}
         >
-          {isSimulating ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-          {isSimulating ? `${simulationProgress}%` : 'Run Rays'}
+          {isSimulating ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} fill="currentColor" />}
+          {isSimulating ? `${simulationProgress}%` : 'Compute'}
         </button>
       </div>
     </div>

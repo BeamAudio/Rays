@@ -1,10 +1,51 @@
 import React, { useRef, useState } from 'react';
 import { useProjectStore } from '../state/project_state';
-import { Trash2, Box, Speaker, Upload, Mic, Layers, Home, Volume2, VolumeX, ShieldCheck, Settings } from 'lucide-react';
+import { 
+  Trash2, Box, Speaker, Upload, Mic, Layers, Home, 
+  Volume2, VolumeX, ShieldCheck, Settings, Plus, LayoutGrid,
+  Zap, Wind, Thermometer, Droplets
+} from 'lucide-react';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
 import { generateShoebox } from '../engine/room_generator';
 import { NumericInput } from './NumericInput';
+
+const sectionHeaderStyle: React.CSSProperties = {
+  fontSize: '10px',
+  fontWeight: 'bold',
+  color: 'var(--text-secondary)',
+  marginBottom: '10px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.1em',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px'
+};
+
+const cardStyle: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.02)',
+  borderRadius: '8px',
+  padding: '12px',
+  border: '1px solid rgba(255,255,255,0.05)',
+  marginBottom: '16px'
+};
+
+const actionButtonStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  width: '100%',
+  padding: '8px 12px',
+  background: 'rgba(255,255,255,0.03)',
+  border: '1px solid rgba(255,255,255,0.05)',
+  borderRadius: '6px',
+  color: '#E2E8F0',
+  fontSize: '11px',
+  cursor: 'pointer',
+  transition: 'all 0.2s',
+  marginBottom: '6px',
+  textAlign: 'left'
+};
 
 export const LeftPanel: React.FC = () => {
   const {
@@ -46,7 +87,7 @@ export const LeftPanel: React.FC = () => {
           rotation: [0, 0, 0],
           scale: [1, 1, 1],
           triangles: triangles,
-          material: { name: 'Imported Mesh', absorption: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1], scattering: 0.1 }
+          material: { name: 'Imported Mesh', absorption: Array(24).fill(0.1), scattering: 0.1 }
         });
       }
       URL.revokeObjectURL(url);
@@ -59,180 +100,188 @@ export const LeftPanel: React.FC = () => {
     setShowWizard(false);
   };
 
-  const renderCreateSection = () => {
-    return (
-      <div className="sidebar-section">
-        <h3 style={{ marginBottom: '10px' }}>Create</h3>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
-          <button className="button" onClick={() => addObject({ name: 'New Box', type: 'mesh', shape: 'box', position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], material: { name: 'generic', absorption: Array(24).fill(0.1), scattering: 0.1, transmission: 0.8 } })}>
-            <Box size={14} /> Box
-          </button>
-          <button className="button" onClick={() => addObject({ name: 'New Sphere', type: 'mesh', shape: 'sphere', position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], material: { name: 'generic', absorption: Array(24).fill(0.1), scattering: 0.1, transmission: 0.8 } })}>
-            <div style={{ width: '12px', height: '12px', borderRadius: '50%', border: '1.5px solid currentColor' }} /> Sphere
-          </button>
-          <button className="button" onClick={() => addObject({ name: 'Source', type: 'source', shape: 'sphere', position: [0, 2, 0], rotation: [0, 0, 0], scale: [0.5, 0.5, 0.5], intensity: 100, sourceType: 'point', directivity: 'omni' })}>
-            <Speaker size={14} /> Source
-          </button>
-          <button className="button" onClick={() => addObject({ name: 'Mic', type: 'receiver', shape: 'sphere', position: [0, 1.5, 2], rotation: [0, 0, 0], scale: [0.2, 0.2, 0.2] })}>
-            <Mic size={14} /> Receiver
-          </button>
+  return (
+    <aside className="sidebar left-panel" style={{ width: '260px', background: '#05070A', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
+      <div className="sidebar-header" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <LayoutGrid size={16} color="var(--accent-primary)" />
+          <span style={{ fontWeight: '700', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Entities</span>
         </div>
-
-        <button className="button" style={{ width: '100%', marginBottom: '8px' }} onClick={() => addObject({ name: 'Map Plane', type: 'plane', shape: 'plane', position: [0, 0.1, 0], rotation: [-Math.PI / 2, 0, 0], scale: [10, 10, 1], resolution: 2 })}>
-          <Layers size={14} /> Analysis Plane
+        <button 
+          className="button" 
+          style={{ padding: '4px', background: 'transparent', border: 'none', color: 'var(--text-secondary)' }} 
+          onClick={() => { if(confirm('Clear entire scene?')) objects.forEach(o => removeObject(o.id)); }}
+        >
+          <Trash2 size={14} />
         </button>
+      </div>
 
-        <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".gltf,.glb" onChange={handleImport} />
-        <button className="button" style={{ width: '100%', marginBottom: '10px' }} onClick={() => fileInputRef.current?.click()}>
-          <Upload size={14} /> Import CAD (GLTF)
-        </button>
-
-        <button className={`button ${showWizard ? 'primary' : ''}`} style={{ width: '100%' }} onClick={() => setShowWizard(!showWizard)}>
-          <Home size={14} /> Room Wizard
-        </button>
-
-        {showWizard && (
-          <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '4px', marginTop: '10px', border: '1px solid var(--accent-primary)' }}>
-            <h4 style={{ fontSize: '10px', marginBottom: '8px', color: 'var(--accent-primary)' }}>Shoebox Template</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginBottom: '10px' }}>
-              {['width', 'depth', 'height'].map((key) => (
-                <NumericInput
-                  key={key}
-                  label={key.toUpperCase()}
-                  value={(roomConfig as any)[key]}
-                  onChange={(v) => setRoomConfig({ ...roomConfig, [key]: v })}
-                  min={1}
-                  max={200}
-                />
-              ))}
-            </div>
-            <button className="button primary" style={{ width: '100%' }} onClick={handleCreateRoom}>
-              Generate Room
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+        
+        <div style={sectionHeaderStyle}>
+          <Plus size={12} /> Creation
+        </div>
+        
+        <div style={cardStyle}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '8px' }}>
+            <button style={actionButtonStyle} onClick={() => addObject({ name: 'Box', type: 'mesh', shape: 'box', position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], material: { name: 'generic', absorption: Array(24).fill(0.1), scattering: 0.1, transmission: 0.8 } })}>
+              <Box size={14} /> Box
+            </button>
+            <button style={actionButtonStyle} onClick={() => addObject({ name: 'Sphere', type: 'mesh', shape: 'sphere', position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], material: { name: 'generic', absorption: Array(24).fill(0.1), scattering: 0.1, transmission: 0.8 } })}>
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', border: '1.5px solid currentColor' }} /> Sphere
             </button>
           </div>
-        )}
-      </div>
-    );
-  };
 
-  return (
-    <aside className="sidebar left-panel">
-      <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>Project Hierarchy</span>
-        <button className="button" style={{ padding: '2px 6px' }} onClick={() => objects.forEach(o => removeObject(o.id))} title="Clear Scene">
-          <Trash2 size={12} />
-        </button>
-      </div>
+          <button style={actionButtonStyle} onClick={() => addObject({ name: 'Source', type: 'source', shape: 'sphere', position: [0, 2, 0], rotation: [0, 0, 0], scale: [0.5, 0.5, 0.5], intensity: 100, sourceType: 'point', directivity: 'omni' })}>
+            <Speaker size={14} color="var(--accent-primary)" /> Acoustic Source
+          </button>
+          
+          <button style={actionButtonStyle} onClick={() => addObject({ name: 'Receiver', type: 'receiver', shape: 'sphere', position: [0, 1.5, 2], rotation: [0, 0, 0], scale: [0.2, 0.2, 0.2] })}>
+            <Mic size={14} color="#8B5CF6" /> Result Receiver
+          </button>
 
-      {renderCreateSection()}
+          <button style={actionButtonStyle} onClick={() => addObject({ name: 'Analysis Plane', type: 'plane', shape: 'plane', position: [0, 0.1, 0], rotation: [-Math.PI / 2, 0, 0], scale: [10, 10, 1], resolution: 2 })}>
+            <Layers size={14} color="#F43F5E" /> Analysis Plane
+          </button>
 
-      {/* ENVIRONMENT SETTINGS (Collapsible) */}
-      <div className="sidebar-section">
-        <button
-          className="button"
-          style={{ width: '100%', justifyContent: 'space-between' }}
-          onClick={() => setShowEnvSettings(!showEnvSettings)}
-        >
-          <span style={{ fontSize: '11px', textTransform: 'uppercase' }}>
-            <Settings size={12} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-            Environment
-          </span>
-          <span style={{ fontSize: '10px', transform: showEnvSettings ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
-        </button>
+          <div style={{ marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
+            <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".gltf,.glb" onChange={handleImport} />
+            <button style={actionButtonStyle} onClick={() => fileInputRef.current?.click()}>
+              <Upload size={14} /> Import CAD (GLTF)
+            </button>
 
-        {showEnvSettings && (
-          <div style={{ marginTop: '12px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
-              <NumericInput
-                label="Temp (°C)"
-                value={environmentSettings.temperature}
-                onChange={(v) => setEnvironmentSettings({ temperature: v })}
-                step={0.5}
-              />
-              <NumericInput
-                label="Humidity (%)"
-                value={environmentSettings.humidity}
-                onChange={(v) => setEnvironmentSettings({ humidity: v })}
-                step={1}
-                min={0}
-                max={100}
-              />
-            </div>
-            <NumericInput
-              label="Pressure (kPa)"
-              value={environmentSettings.pressure}
-              onChange={(v) => setEnvironmentSettings({ pressure: v })}
-              step={0.1}
-            />
+            <button 
+              style={{ ...actionButtonStyle, background: showWizard ? 'rgba(0, 229, 255, 0.1)' : 'rgba(255,255,255,0.03)', borderColor: showWizard ? 'var(--accent-primary)' : undefined }} 
+              onClick={() => setShowWizard(!showWizard)}
+            >
+              <Home size={14} /> Room Wizard
+            </button>
+            
+            {showWizard && (
+              <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '6px', marginTop: '8px', border: '1px solid var(--accent-primary)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px', marginBottom: '10px' }}>
+                  {['width', 'depth', 'height'].map((key) => (
+                    <NumericInput
+                      key={key}
+                      label={key[0].toUpperCase()}
+                      value={(roomConfig as any)[key]}
+                      onChange={(v) => setRoomConfig({ ...roomConfig, [key]: v })}
+                      min={1}
+                      max={200}
+                    />
+                  ))}
+                </div>
+                <button className="button primary small" style={{ width: '100%' }} onClick={handleCreateRoom}>
+                  Construct Shoebox
+                </button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* SCENE GRAPH */}
-      <div className="sidebar-section" style={{ flex: 1, overflowY: 'auto' }}>
-        <h3>Scene Graph</h3>
-        <div className="object-list">
+        {/* ENVIRONMENT SETTINGS */}
+        <div style={sectionHeaderStyle}>
+          <Settings size={12} /> Conditions
+        </div>
+        <div style={cardStyle}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', color: 'var(--text-secondary)' }}>
+                  <Thermometer size={10} /> TEMP
+                </div>
+                <NumericInput
+                  value={environmentSettings.temperature}
+                  onChange={(v) => setEnvironmentSettings({ temperature: v })}
+                  step={0.5}
+                />
+             </div>
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', color: 'var(--text-secondary)' }}>
+                  <Droplets size={10} /> HUMIDITY
+                </div>
+                <NumericInput
+                  value={environmentSettings.humidity}
+                  onChange={(v) => setEnvironmentSettings({ humidity: v })}
+                  step={1}
+                  min={0}
+                  max={100}
+                />
+             </div>
+          </div>
+          <div style={{ marginTop: '10px' }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                <Wind size={10} /> STATIC PRESSURE (KPA)
+             </div>
+             <NumericInput
+                value={environmentSettings.pressure}
+                onChange={(v) => setEnvironmentSettings({ pressure: v })}
+                step={0.1}
+              />
+          </div>
+        </div>
+
+        {/* SCENE GRAPH */}
+        <div style={sectionHeaderStyle}>
+          <Zap size={12} /> Scene Graph
+        </div>
+        <div className="object-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {objects.map(obj => (
             <div 
               key={obj.id} 
-              className={`object-item ${selectedId === obj.id ? 'active' : ''}`}
               onClick={() => setSelected(obj.id)}
               style={{
-                padding: '8px 12px',
-                marginBottom: '4px',
-                background: selectedId === obj.id ? 'rgba(0, 128, 128, 0.2)' : 'transparent',
-                border: `1px solid ${selectedId === obj.id ? 'var(--accent-primary)' : 'transparent'}`,
-                borderRadius: '4px',
+                padding: '6px 10px',
+                background: selectedId === obj.id ? 'rgba(0, 229, 255, 0.08)' : 'rgba(255,255,255,0.02)',
+                border: `1px solid ${selectedId === obj.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)'}`,
+                borderRadius: '6px',
                 cursor: 'pointer',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                fontSize: '13px'
+                transition: 'all 0.15s'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, overflow: 'hidden' }}>
-                {obj.type === 'mesh' ? <Box size={14} /> : obj.type === 'source' ? <Speaker size={14} /> : obj.type === 'plane' ? <Layers size={14} /> : <Mic size={14} />}
+                <span style={{ opacity: 0.5 }}>
+                  {obj.type === 'mesh' ? <Box size={12} /> : obj.type === 'source' ? <Speaker size={12} /> : obj.type === 'plane' ? <Layers size={12} /> : <Mic size={12} />}
+                </span>
                 <span style={{ 
+                  fontSize: '11px',
                   textDecoration: obj.muted ? 'line-through' : 'none', 
-                  opacity: obj.muted ? 0.5 : 1,
-                  color: obj.solo ? '#00E5FF' : 'inherit',
+                  opacity: obj.muted ? 0.4 : 1,
+                  color: obj.solo ? 'var(--accent-primary)' : '#E2E8F0',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis'
                 }}>{obj.name}</span>
               </div>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 {obj.type === 'source' && (
                   <>
                     <button 
                       className="button" 
-                      style={{ padding: '2px', background: 'transparent', border: 'none', minWidth: '20px' }}
+                      style={{ padding: '2px', background: 'transparent', border: 'none' }}
                       onClick={(e) => { e.stopPropagation(); updateObject(obj.id, { muted: !obj.muted }); }}
-                      title={obj.muted ? "Unmute" : "Mute"}
                     >
-                      {obj.muted ? <VolumeX size={14} color="#ff4d4d" /> : <Volume2 size={14} opacity={0.7} />}
+                      {obj.muted ? <VolumeX size={12} color="#F43F5E" /> : <Volume2 size={12} opacity={0.4} />}
                     </button>
                     <button 
                       className="button" 
-                      style={{ padding: '2px', background: 'transparent', border: 'none', minWidth: '20px' }}
+                      style={{ padding: '2px', background: 'transparent', border: 'none' }}
                       onClick={(e) => { e.stopPropagation(); updateObject(obj.id, { solo: !obj.solo }); }}
-                      title={obj.solo ? "De-solo" : "Solo"}
                     >
-                      <ShieldCheck size={14} color={obj.solo ? '#00E5FF' : 'currentColor'} opacity={obj.solo ? 1 : 0.4} />
+                      <ShieldCheck size={12} color={obj.solo ? 'var(--accent-primary)' : 'currentColor'} opacity={obj.solo ? 1 : 0.2} />
                     </button>
                   </>
                 )}
                 {selectedId === obj.id && (
-                  <Trash2 
-                    size={14} 
-                    color="#ff4d4d" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeObject(obj.id);
-                    }}
-                  />
+                  <button 
+                    style={{ padding: '2px', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                    onClick={(e) => { e.stopPropagation(); removeObject(obj.id); }}
+                  >
+                    <Trash2 size={12} color="#F43F5E" />
+                  </button>
                 )}
               </div>
             </div>

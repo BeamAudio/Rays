@@ -1,4 +1,5 @@
 import type { ImpulseResponse, AcousticMetrics } from '../types';
+import { A_WEIGHTING_1_3 } from '../types';
 
 export function calculateMetrics(ir: ImpulseResponse, ambientNoiseSPL: number[] = Array(24).fill(30)): AcousticMetrics {
   const numOctaves = 24;
@@ -7,6 +8,7 @@ export function calculateMetrics(ir: ImpulseResponse, ambientNoiseSPL: number[] 
     c80: Array(numOctaves).fill(0),
     d50: Array(numOctaves).fill(0),
     spl: Array(numOctaves).fill(0),
+    splA: 0,
     sti: 0,
     etc: []
   };
@@ -37,7 +39,8 @@ export function calculateMetrics(ir: ImpulseResponse, ambientNoiseSPL: number[] 
     }
   });
 
-  const broadband = energyGrid.map(bin => bin[13]); // Use 1kHz for default etc
+  // Calculate broadband ETC using energy summation across all bands
+  const broadband = energyGrid.map(bin => bin.reduce((a, b) => a + b, 0)); 
   
   const maxBroadband = Math.max(...broadband, 1e-12);
   metrics.etc = Array.from(broadband).map((e, i) => ({
@@ -56,12 +59,18 @@ export function calculateMetrics(ir: ImpulseResponse, ambientNoiseSPL: number[] 
     })).sort((a,b) => a.time - b.time);
   }
 
+  let totalEnergyLinear = 0;
+  let totalEnergyAWeighted = 0;
+
   for (let f = 0; f < numOctaves; f++) {
-    // 2. SPL (Simplified)
-    const totalEnergy = energies 
+    // 2. SPL
+    const bandEnergy = energies 
        ? energies.reduce((sum, e) => sum + e[f], 0) 
        : energyGrid.reduce((sum, e) => sum + e[f], 0);
-    metrics.spl[f] = 10 * Math.log10(totalEnergy + 1e-12);
+    
+    metrics.spl[f] = 10 * Math.log10(bandEnergy + 1e-12);
+    totalEnergyLinear += bandEnergy;
+    totalEnergyAWeighted += bandEnergy * Math.pow(10, A_WEIGHTING_1_3[f] / 10);
 
     // 3. Schröder Decay (Backward Integration)
     const decay = new Float32Array(numBins);
@@ -111,6 +120,8 @@ export function calculateMetrics(ir: ImpulseResponse, ambientNoiseSPL: number[] 
     metrics.c80[f] = 10 * Math.log10(early80 / (late80 + 1e-12) + 1e-12);
     metrics.d50[f] = early50 / (early50 + late50 + 1e-12);
   }
+
+  metrics.splA = 10 * Math.log10(totalEnergyAWeighted + 1e-12);
 
   // 6. STI (Speech Transmission Index) - IEC 60268-16
   // Modulation frequencies (14 frequencies)

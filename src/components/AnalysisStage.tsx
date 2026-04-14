@@ -190,7 +190,7 @@ export const AnalysisStage: React.FC = () => {
                     </div>
                     <div style={{ padding: '8px', background: 'rgba(139, 92, 246, 0.06)', borderRadius: '6px', textAlign: 'center' }}>
                         <div style={{ fontSize: '18px', fontWeight: '700', color: '#F8FAFC' }}>
-                            {currentResult.metrics.spl[selectedBand === 24 ? 13 : selectedBand].toFixed(1)}dB
+                            {selectedBand === 24 ? currentResult.metrics.splA?.toFixed(1) : currentResult.metrics.spl[selectedBand].toFixed(1)}dB{selectedBand === 24 ? '(A)' : ''}
                         </div>
                         <div style={{ fontSize: '8px', color: '#64748B', marginTop: '2px' }}>SPL</div>
                     </div>

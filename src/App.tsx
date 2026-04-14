@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { Viewport } from './components/Viewport';
 import { LeftPanel } from './components/LeftPanel';
 import { RightPanel } from './components/RightPanel';
@@ -9,10 +9,52 @@ import { SpeakerDesigner } from './components/SpeakerDesigner';
 import { AnalysisStage } from './components/AnalysisStage';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useProjectStore } from './state/project_state';
+import { Maximize2, Play } from 'lucide-react';
 import './App.css';
+
+const StartScreen: React.FC<{ onStart: (fullscreen: boolean) => void }> = ({ onStart }) => {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999, background: '#05070A',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      gap: '40px', color: '#fff', textAlign: 'center'
+    }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <h1 style={{ fontSize: '28px', letterSpacing: '8px', margin: 0, fontWeight: '900' }}>
+          BEAM <span style={{ color: 'var(--accent-primary)' }}>AUDIO</span> RAYS
+        </h1>
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '4px' }}>
+          Consultancy Grade Acoustic Simulation
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', gap: '16px' }}>
+        <button 
+          className="button primary" 
+          onClick={() => onStart(true)}
+          style={{ padding: '16px 32px', borderRadius: '40px', fontSize: '14px', fontWeight: 'bold', gap: '12px' }}
+        >
+          <Maximize2 size={20} /> ENTER FULLSCREEN
+        </button>
+        <button 
+          className="button" 
+          onClick={() => onStart(false)}
+          style={{ padding: '16px 32px', borderRadius: '40px', fontSize: '14px', fontWeight: 'bold', gap: '12px' }}
+        >
+          <Play size={20} /> START WORKSPACE
+        </button>
+      </div>
+
+      <div style={{ position: 'absolute', bottom: '40px', fontSize: '10px', color: '#475569', maxWidth: '400px', lineHeight: '1.6' }}>
+        Professional tool for acoustic consultancy. Standard octave band analysis (ISO 3382), STI calculation (IEC 60268-16), and A-weighted broadband results.
+      </div>
+    </div>
+  );
+};
 
 function App() {
   const { currentView, undo, redo, showAnalysis, selectedId, removeObject, objects } = useProjectStore();
+  const [hasStarted, setHasStarted] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -44,8 +86,16 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo, redo, selectedId, removeObject, objects]);
 
+  const handleStart = (fullscreen: boolean) => {
+    if (fullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+    setHasStarted(true);
+  };
+
   return (
     <div className="app-container">
+      {!hasStarted && <StartScreen onStart={handleStart} />}
       <Topbar />
       
       {currentView === 'WORKSPACE' && (

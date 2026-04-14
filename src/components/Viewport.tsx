@@ -6,8 +6,9 @@ import { useProjectStore } from '../state/project_state';
 import type { SceneObject } from '../types';
 import { calculateRoomModes } from '../engine/numerical';
 import type { RoomMode } from '../engine/numerical';
+import { OCTAVE_1_3_FREQS, OCTAVE_1_1_FREQS, MAP_1_3_TO_1_1 } from '../types';
 
-const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect: () => void }> = ({ obj, isSelected, onSelect }) => {
+const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect: () => void; readOnly?: boolean }> = ({ obj, isSelected, onSelect, readOnly }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const { updateObject, results, showHeatmap, selectedBand } = useProjectStore();
 
@@ -45,7 +46,7 @@ const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect
 
   return (
     <>
-      {isSelected && (
+      {isSelected && !readOnly && (
         <TransformControls object={meshRef.current || undefined} onObjectChange={handleTransform} />
       )}
 
@@ -59,10 +60,10 @@ const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect
           position={obj.position}
           rotation={obj.rotation}
           scale={obj.scale}
-          onClick={(e) => { e.stopPropagation(); onSelect(); }}
+          onClick={(e) => { if (!readOnly) { e.stopPropagation(); onSelect(); } }}
         >
           {obj.shape === 'box' ? <boxGeometry args={[1, 1, 1]} /> : 
-           obj.shape === 'sphere' ? <sphereGeometry args={[obj.type === 'source' ? 0.2 : 0.5, 32, 32]} /> : 
+           obj.shape === 'sphere' ? <sphereGeometry args={[obj.type === 'source' ? 0.1 : 0.3, 32, 32]} /> : 
            obj.shape === 'plane' ? <planeGeometry args={[1, 1]} /> : 
            obj.shape === 'mesh' && obj.triangles ? (
             <bufferGeometry>
@@ -94,8 +95,12 @@ const PlaneHeatmap: React.FC<{ obj: SceneObject; results: any[]; selectedBand: n
     const expected = (nx + 1) * (ny + 1);
     const colorOutput = new Float32Array(expected * 3);
     const color = new THREE.Color();
-    const bandIdx = selectedBand === 24 ? 13 : selectedBand;
-    const spls = results.map(r => r.metrics?.spl?.[bandIdx] ?? -Infinity);
+    
+    const spls = results.map(r => {
+      if (selectedBand === 24) return r.metrics?.splA ?? -Infinity;
+      return r.metrics?.spl?.[selectedBand] ?? -Infinity;
+    });
+
     const validSpls = spls.filter(s => isFinite(s) && s > -100);
     const minSpl = validSpls.length > 0 ? Math.min(...validSpls) : 0;
     const maxSpl = validSpls.length > 0 ? Math.max(...validSpls) : 0;
@@ -161,7 +166,7 @@ const VolumetricModes: React.FC<{ roomDims: { L: number, H: number, W: number },
   );
 };
 
-const SceneContent: React.FC = () => {
+const SceneContent: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
   const { objects, selectedId, setSelected, results, showRays, selectedRayIndex, setSelectedRayIndex, currentTime, showRoomModes, selectedModeIdx } = useProjectStore();
   const selectedResult = results.find(r => r.receiverId === selectedId);
   const displayResult = selectedResult;
@@ -203,7 +208,7 @@ const SceneContent: React.FC = () => {
       <pointLight position={[10, 10, 10]} intensity={0.8} />
       <Grid infiniteGrid fadeDistance={50} fadeStrength={5} sectionColor="#004040" cellColor="#111" sectionSize={5} cellSize={1} />
       {objects.map((obj) => (
-        <ObjectRenderer key={obj.id} obj={obj} isSelected={selectedId === obj.id} onSelect={() => setSelected(obj.id)} />
+        <ObjectRenderer key={obj.id} obj={obj} isSelected={selectedId === obj.id} onSelect={() => setSelected(obj.id)} readOnly={readOnly} />
       ))}
       {showRays && displayResult?.rayPaths && (
         <group>
@@ -243,31 +248,40 @@ const SceneContent: React.FC = () => {
   );
 };
 
-export const Viewport: React.FC = () => {
+export const Viewport: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
   const {
     showRays, showHeatmap, showRoomModes, setVisualizationOptions,
-    results, selectedBand, setSelectedBand, viewMode, setViewMode
+    results, selectedBand, setSelectedBand, viewMode, setViewMode,
+    bandMode, toggleBandMode
   } = useProjectStore();
 
   const [hoveredBand, setHoveredBand] = React.useState<number | null>(null);
 
-  const octaveFreqs = [50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000];
+  const displayFreqs = bandMode === '1/3' ? OCTAVE_1_3_FREQS : OCTAVE_1_1_FREQS;
 
   const { splStats, avgSplPerBand } = React.useMemo(() => {
-    const bandIdx = selectedBand === 24 ? 13 : selectedBand;
-    const vals = results.map(r => r.metrics.spl[bandIdx]).filter(v => isFinite(v) && v > -100);
+    const vals = results.map(r => {
+      if (selectedBand === 24) return r.metrics?.splA ?? -Infinity;
+      return r.metrics?.spl?.[selectedBand] ?? -Infinity;
+    }).filter(v => isFinite(v) && v > -100);
+    
     const stats = vals.length === 0 ? { min: 0, max: 0 } : { min: Math.min(...vals), max: Math.max(...vals) };
 
-    // Average SPL across all receivers for each octave band
-    const perBand = octaveFreqs.map((_, i) => {
-      const bandVals = results.map(r => r.metrics.spl[i]).filter(v => isFinite(v) && v > -100);
+    // Average SPL across all receivers for each band in current mode
+    const perBand = displayFreqs.map((_, i) => {
+      let bandIdx = i;
+      if (bandMode === '1') {
+        // Map 1/1 index to 1/3 index (center band of the trio)
+        bandIdx = MAP_1_3_TO_1_1[i].subIndices[1];
+      }
+      const bandVals = results.map(r => r.metrics.spl[bandIdx]).filter(v => isFinite(v) && v > -100);
       return bandVals.length === 0 ? -100 : bandVals.reduce((a, b) => a + b, 0) / bandVals.length;
     });
 
     return { splStats: stats, avgSplPerBand: perBand };
-  }, [results, selectedBand]);
+  }, [results, selectedBand, bandMode, displayFreqs]);
 
-  const displayBand = hoveredBand !== null ? hoveredBand : (selectedBand === 24 ? 13 : selectedBand);
+  const displayBand = hoveredBand !== null ? hoveredBand : selectedBand;
   const minAll = Math.min(...avgSplPerBand.filter(v => v > -100), 0);
   const maxAll = Math.max(...avgSplPerBand.filter(v => v > -100), 0);
   const range = maxAll - minAll || 1;
@@ -280,51 +294,22 @@ export const Viewport: React.FC = () => {
         <SceneContent />
       </Canvas>
 
-      {/* Compacted viewport toolbar at bottom */}
-      <div style={{ position: 'absolute', bottom: showHeatmap ? '60px' : '12px', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(10,10,10,0.9)', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--border-color)', backdropFilter: 'blur(8px)', zIndex: 100, transition: 'bottom 0.2s' }}>
-        <div style={{ display: 'flex', gap: '2px', marginRight: '8px', borderRight: '1px solid var(--border-color)', paddingRight: '8px' }}>
-          <button className={`button small ${viewMode === '2D' ? 'primary' : ''}`} onClick={() => setViewMode('2D')} style={{ padding: '3px 8px', fontSize: '10px' }}>2D</button>
-          <button className={`button small ${viewMode === '3D' ? 'primary' : ''}`} onClick={() => setViewMode('3D')} style={{ padding: '3px 8px', fontSize: '10px' }}>3D</button>
-        </div>
-
-        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showRays} onChange={e => setVisualizationOptions({ showRays: e.target.checked })} />
-          Rays
-        </label>
-
-        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showHeatmap} onChange={e => setVisualizationOptions({ showHeatmap: e.target.checked })} />
-          Heatmap
-        </label>
-
-        <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showRoomModes} onChange={e => setVisualizationOptions({ showRoomModes: e.target.checked })} />
-          Modes
-        </label>
-
-        {showHeatmap && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px', paddingLeft: '8px', borderLeft: '1px solid var(--border-color)' }}>
-            <div style={{ width: '40px', height: '6px', background: 'linear-gradient(to right, hsl(252, 100%, 50%), hsl(180, 100%, 50%), hsl(108, 100%, 50%), hsl(36, 100%, 50%), hsl(0, 100%, 50%))', borderRadius: '2px' }}></div>
-            <span style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>{splStats.min.toFixed(0)}-{splStats.max.toFixed(0)}dB</span>
-          </div>
-        )}
-      </div>
-
-      {/* Frequency Spectrum Bar (below heatmap toolbar) */}
+      {/* Frequency Spectrum Bar (bottom) */}
       {showHeatmap && results.length > 0 && (
-        <div style={{ position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'flex-end', gap: '2px', background: 'rgba(10,10,10,0.9)', padding: '8px 12px 6px', borderRadius: '8px', border: '1px solid var(--border-color)', backdropFilter: 'blur(8px)', zIndex: 100, minWidth: '500px' }}>
-          {octaveFreqs.map((freq, i) => {
-            const isActive = displayBand === i;
+        <div style={{ position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'flex-end', gap: '2px', background: 'rgba(10,10,10,0.9)', padding: '8px 12px 6px', borderRadius: '8px', border: '1px solid var(--border-color)', backdropFilter: 'blur(8px)', zIndex: 100, minWidth: bandMode === '1/3' ? '500px' : '300px' }}>
+          {displayFreqs.map((freq, i) => {
+            const actualBandIdx = bandMode === '1' ? MAP_1_3_TO_1_1[i].subIndices[1] : i;
+            const isActive = selectedBand === actualBandIdx;
             const height = avgSplPerBand[i] > -100 ? Math.max(4, ((avgSplPerBand[i] - minAll) / range) * 30) : 2;
             const label = freq >= 1000 ? `${freq/1000}k` : freq;
             return (
               <div
                 key={i}
-                onClick={() => setSelectedBand(i)}
-                onMouseEnter={() => setHoveredBand(i)}
+                onClick={() => setSelectedBand(actualBandIdx)}
+                onMouseEnter={() => setHoveredBand(actualBandIdx)}
                 onMouseLeave={() => setHoveredBand(null)}
                 style={{
-                  width: '14px',
+                  width: bandMode === '1/3' ? '14px' : '28px',
                   height: `${height}px`,
                   background: isActive ? 'var(--accent-primary)' : 'rgba(0, 229, 255, 0.2)',
                   borderRadius: '2px 2px 0 0',
@@ -336,11 +321,11 @@ export const Viewport: React.FC = () => {
                   alignItems: 'center'
                 }}
               >
-                {i % 3 === 0 && (
+                {(bandMode === '1' || i % 3 === 0) && (
                   <span style={{ fontSize: '7px', color: '#64748B', marginTop: '4px', transform: 'translateY(2px)' }}>{label}</span>
                 )}
                 {/* Hover tooltip */}
-                {hoveredBand === i && (
+                {hoveredBand === actualBandIdx && (
                   <div style={{
                     position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
                     background: 'rgba(0,0,0,0.95)', padding: '4px 8px', borderRadius: '4px',
@@ -360,14 +345,15 @@ export const Viewport: React.FC = () => {
             onMouseEnter={() => setHoveredBand(24)}
             onMouseLeave={() => setHoveredBand(null)}
             style={{
-              width: '28px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '32px', height: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               background: selectedBand === 24 ? 'var(--accent-primary)' : 'rgba(0, 229, 255, 0.1)',
-              borderRadius: '4px', cursor: 'pointer', marginLeft: '4px', fontSize: '8px', fontWeight: 'bold',
+              borderRadius: '4px', cursor: 'pointer', marginLeft: '8px', fontSize: '8px', fontWeight: 'bold',
               color: selectedBand === 24 ? '#000' : '#64748B', transition: 'all 0.15s',
               position: 'relative'
             }}
           >
             BB
+            <span style={{ fontSize: '6px', opacity: 0.7 }}>{results[0]?.metrics?.splA?.toFixed(0) || '--'} dB(A)</span>
             {hoveredBand === 24 && (
               <div style={{
                 position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
@@ -375,11 +361,22 @@ export const Viewport: React.FC = () => {
                 border: '1px solid var(--border-color)', whiteSpace: 'nowrap', marginBottom: '4px',
                 pointerEvents: 'none', zIndex: 200
               }}>
-                <div style={{ fontSize: '9px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>Broadband</div>
-                <div style={{ fontSize: '9px', color: '#E2E8F0' }}>1kHz reference</div>
+                <div style={{ fontSize: '9px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>Broadband (A-Weighted)</div>
+                <div style={{ fontSize: '9px', color: '#E2E8F0' }}>Consultancy standard summation</div>
               </div>
             )}
           </div>
+
+          <button 
+            onClick={toggleBandMode}
+            style={{ 
+              marginLeft: '8px', padding: '2px 6px', fontSize: '8px', background: 'transparent', 
+              border: '1px solid var(--border-color)', color: 'var(--text-secondary)', borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            {bandMode === '1' ? '8 bands' : '24 bands'}
+          </button>
         </div>
       )}
     </div>

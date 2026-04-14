@@ -1,4 +1,22 @@
 
+export const OCTAVE_1_3_FREQS = [50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000];
+export const OCTAVE_1_1_FREQS = [63, 125, 250, 500, 1000, 2000, 4000, 8000];
+
+// Mapping from 1/3rd to 1/1 octave indices
+export const MAP_1_3_TO_1_1 = [
+  { fullIdx: 0, subIndices: [0, 1, 2] },    // 63Hz
+  { fullIdx: 1, subIndices: [3, 4, 5] },    // 125Hz
+  { fullIdx: 2, subIndices: [6, 7, 8] },    // 250Hz
+  { fullIdx: 3, subIndices: [9, 10, 11] },  // 500Hz
+  { fullIdx: 4, subIndices: [12, 13, 14] }, // 1kHz
+  { fullIdx: 5, subIndices: [15, 16, 17] }, // 2kHz
+  { fullIdx: 6, subIndices: [18, 19, 20] }, // 4kHz
+  { fullIdx: 7, subIndices: [21, 22, 23] }, // 8kHz
+];
+
+// A-Weighting values for 1/3 octave bands
+export const A_WEIGHTING_1_3 = [-30.2, -26.2, -22.5, -19.1, -16.1, -13.4, -10.9, -8.6, -6.6, -4.8, -3.2, -1.9, -0.8, 0, 0.6, 1.0, 1.2, 1.3, 1.2, 1.0, 0.5, -0.1, -1.1, -2.5];
+
 export interface DirectivityPattern {
   name: string;
   horizontal: number[]; // e.g., [0, 10, 20, ... 350]
@@ -51,6 +69,7 @@ export interface AcousticMetrics {
   c80: number[];
   d50: number[];
   spl: number[];
+  splA?: number; // Broadband A-weighted SPL
   sti: number; // Broadband STI (0-1)
   etc: { time: number; energy: number }[];
   arrivals?: { time: number; energy: number[]; order: number }[];
