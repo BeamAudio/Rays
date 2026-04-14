@@ -1,8 +1,7 @@
 import React, { useRef } from 'react';
 import { 
-  Play, Save, Loader2, FolderOpen, Layout, Globe, PenTool, 
-  RotateCcw, RotateCw, Activity, Camera, Maximize2, Minimize2,
-  Box, Layers, Zap, Eye
+  Play, Save, Loader2, FolderOpen, Layout, PenTool, 
+  Activity, Camera, Box, Layers, Zap
 } from 'lucide-react';
 import { useProjectStore } from '../state/project_state';
 import * as THREE from 'three';
@@ -13,29 +12,11 @@ export const Topbar: React.FC = () => {
   const {
     objects, setSimulating, setSimulationResults,
     isSimulating, simulationProgress, environmentSettings,
-    currentView, setCurrentView, undo, redo, past, future,
-    showAnalysis, toggleAnalysis,
+    currentView, setCurrentView, toggleAnalysis,
     viewMode, setViewMode, showRays, showHeatmap, showRoomModes, setVisualizationOptions
   } = useProjectStore();
 
   const loadRef = useRef<HTMLInputElement>(null);
-  const [isFullscreen, setIsFullscreen] = React.useState(false);
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
-    }
-  };
-
-  React.useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', handler);
-    return () => document.removeEventListener('fullscreenchange', handler);
-  }, []);
 
   const handleSaveProject = () => {
     const data = JSON.stringify(objects, null, 2);

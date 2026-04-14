@@ -250,8 +250,8 @@ const SceneContent: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
 
 export const Viewport: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
   const {
-    showRays, showHeatmap, showRoomModes, setVisualizationOptions,
-    results, selectedBand, setSelectedBand, viewMode, setViewMode,
+    showHeatmap,
+    results, selectedBand, setSelectedBand, viewMode,
     bandMode, toggleBandMode
   } = useProjectStore();
 
@@ -259,14 +259,7 @@ export const Viewport: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
 
   const displayFreqs = bandMode === '1/3' ? OCTAVE_1_3_FREQS : OCTAVE_1_1_FREQS;
 
-  const { splStats, avgSplPerBand } = React.useMemo(() => {
-    const vals = results.map(r => {
-      if (selectedBand === 24) return r.metrics?.splA ?? -Infinity;
-      return r.metrics?.spl?.[selectedBand] ?? -Infinity;
-    }).filter(v => isFinite(v) && v > -100);
-    
-    const stats = vals.length === 0 ? { min: 0, max: 0 } : { min: Math.min(...vals), max: Math.max(...vals) };
-
+  const { avgSplPerBand } = React.useMemo(() => {
     // Average SPL across all receivers for each band in current mode
     const perBand = displayFreqs.map((_, i) => {
       let bandIdx = i;
@@ -278,10 +271,9 @@ export const Viewport: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
       return bandVals.length === 0 ? -100 : bandVals.reduce((a, b) => a + b, 0) / bandVals.length;
     });
 
-    return { splStats: stats, avgSplPerBand: perBand };
+    return { avgSplPerBand: perBand };
   }, [results, selectedBand, bandMode, displayFreqs]);
 
-  const displayBand = hoveredBand !== null ? hoveredBand : selectedBand;
   const minAll = Math.min(...avgSplPerBand.filter(v => v > -100), 0);
   const maxAll = Math.max(...avgSplPerBand.filter(v => v > -100), 0);
   const range = maxAll - minAll || 1;
@@ -379,6 +371,10 @@ export const Viewport: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
           </button>
         </div>
       )}
+    </div>
+  );
+};
+ )}
     </div>
   );
 };

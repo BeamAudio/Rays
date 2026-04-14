@@ -55,7 +55,6 @@ export const LeftPanel: React.FC = () => {
   } = useProjectStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showWizard, setShowWizard] = useState(false);
-  const [showEnvSettings, setShowEnvSettings] = useState(false);
   const [roomConfig, setRoomConfig] = useState({ width: 10, depth: 8, height: 3 });
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {

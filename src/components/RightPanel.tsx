@@ -5,7 +5,7 @@ import { DraggableWindow } from './DraggableWindow';
 import { DirectivityLibrary } from '../engine/directivity_library';
 import { NumericInput } from './NumericInput';
 import { MaterialPicker } from './MaterialPicker';
-import { OCTAVE_1_3_FREQS, OCTAVE_1_1_FREQS, MAP_1_3_TO_1_1 } from '../types';
+import { OCTAVE_1_3_FREQS } from '../types';
 
 const labelStyle: React.CSSProperties = {
   fontSize: '10px',
@@ -55,7 +55,7 @@ export const RightPanel: React.FC = () => {
   const {
     objects, selectedId, updateObject,
     selectedBand, setSelectedBand,
-    results, bandMode
+    results
   } = useProjectStore();
 
   const selectedObject = objects.find(o => o.id === selectedId);
@@ -63,8 +63,6 @@ export const RightPanel: React.FC = () => {
   if (!selectedObject) {
     return null;
   }
-
-  const freqLabels = bandMode === '1/3' ? OCTAVE_1_3_FREQS : OCTAVE_1_1_FREQS;
 
   if (results.length > 0 && selectedObject.type === 'receiver') {
     return (
