@@ -20,8 +20,9 @@
 }
 
 .logo {
-  font-family: var(--font-brand);
+  font-family: 'League Spartan', sans-serif !important;
   font-size: 20px;
+  font-weight: 700;
   color: var(--text-primary);
 }
 

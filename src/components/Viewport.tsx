@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid, TransformControls, PerspectiveCamera, OrthographicCamera, Line, Html } from '@react-three/drei';
+import { OrbitControls, Grid, TransformControls, PerspectiveCamera, OrthographicCamera, Line } from '@react-three/drei';
 import { useProjectStore } from '../state/project_state';
 import type { SceneObject } from '../types';
 import { calculateRoomModes } from '../engine/numerical';
@@ -41,9 +41,6 @@ const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect
   const isPlane = obj.shape === 'plane' || obj.type === 'plane';
   const planeResults = isPlane ? results.filter(r => r.receiverId.startsWith(obj.id + '_')) : [];
   const showPlaneResults = isPlane && planeResults.length > 0 && showHeatmap;
-  const isReceiver = obj.type === 'receiver';
-  const receiverResult = isReceiver ? results.find(r => r.receiverId === obj.id) : null;
-  const showHUD = isReceiver && receiverResult;
   const matProps = getMaterialProps(obj.material);
 
   return (
@@ -81,27 +78,6 @@ const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect
             <meshStandardMaterial color="#008080" transparent opacity={0.3} side={THREE.DoubleSide} wireframe />
           ) : (
             <meshStandardMaterial color="#ff00ff" emissive="#ff00ff" emissiveIntensity={1} />
-          )}
-
-          {isReceiver && (
-            <group rotation={[Math.PI / 2, 0, 0]}>
-              <mesh position={[0, 0, 0.4]} rotation={[-Math.PI / 2, 0, 0]}>
-                <coneGeometry args={[0.08, 0.2, 16]} />
-                <meshBasicMaterial color="#ff00ff" />
-              </mesh>
-            </group>
-          )}
-
-          {showHUD && (
-            <Html position={[0, 1, 0]} center zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
-              <div style={{ background: 'rgba(10,10,10,0.9)', padding: '10px', borderRadius: '8px', border: '1px solid var(--accent-primary)', backdropFilter: 'blur(4px)', color: 'white', fontFamily: 'var(--font-main)', width: '120px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', textAlign: 'center' }}>
-                <div style={{ fontSize: '10px', color: 'var(--accent-primary)', marginBottom: '5px', fontWeight: 'bold' }}>{obj.name}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', fontSize: '11px' }}>
-                  <div style={{ color: 'var(--text-secondary)' }}>T30</div><div>{receiverResult!.metrics.t30[selectedBand === 24 ? 13 : selectedBand].toFixed(2)}s</div>
-                  <div style={{ color: 'var(--text-secondary)' }}>SPL</div><div>{receiverResult!.metrics.spl[selectedBand === 24 ? 13 : selectedBand].toFixed(1)}dB</div>
-                </div>
-              </div>
-            </Html>
           )}
         </mesh>
       )}
@@ -255,14 +231,31 @@ const SceneContent: React.FC = () => {
 export const Viewport: React.FC = () => {
   const {
     showRays, showHeatmap, showRoomModes, setVisualizationOptions,
-    results, selectedBand, viewMode, setViewMode
+    results, selectedBand, setSelectedBand, viewMode, setViewMode
   } = useProjectStore();
 
-  const splStats = React.useMemo(() => {
+  const [hoveredBand, setHoveredBand] = React.useState<number | null>(null);
+
+  const octaveFreqs = [50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000];
+
+  const { splStats, avgSplPerBand } = React.useMemo(() => {
     const bandIdx = selectedBand === 24 ? 13 : selectedBand;
     const vals = results.map(r => r.metrics.spl[bandIdx]).filter(v => isFinite(v) && v > -100);
-    return vals.length === 0 ? { min: 0, max: 0 } : { min: Math.min(...vals), max: Math.max(...vals) };
+    const stats = vals.length === 0 ? { min: 0, max: 0 } : { min: Math.min(...vals), max: Math.max(...vals) };
+
+    // Average SPL across all receivers for each octave band
+    const perBand = octaveFreqs.map((_, i) => {
+      const bandVals = results.map(r => r.metrics.spl[i]).filter(v => isFinite(v) && v > -100);
+      return bandVals.length === 0 ? -100 : bandVals.reduce((a, b) => a + b, 0) / bandVals.length;
+    });
+
+    return { splStats: stats, avgSplPerBand: perBand };
   }, [results, selectedBand]);
+
+  const displayBand = hoveredBand !== null ? hoveredBand : (selectedBand === 24 ? 13 : selectedBand);
+  const minAll = Math.min(...avgSplPerBand.filter(v => v > -100), 0);
+  const maxAll = Math.max(...avgSplPerBand.filter(v => v > -100), 0);
+  const range = maxAll - minAll || 1;
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
@@ -273,7 +266,7 @@ export const Viewport: React.FC = () => {
       </Canvas>
 
       {/* Compacted viewport toolbar at bottom */}
-      <div style={{ position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(10,10,10,0.9)', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--border-color)', backdropFilter: 'blur(8px)', zIndex: 100 }}>
+      <div style={{ position: 'absolute', bottom: showHeatmap ? '60px' : '12px', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(10,10,10,0.9)', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--border-color)', backdropFilter: 'blur(8px)', zIndex: 100, transition: 'bottom 0.2s' }}>
         <div style={{ display: 'flex', gap: '2px', marginRight: '8px', borderRight: '1px solid var(--border-color)', paddingRight: '8px' }}>
           <button className={`button small ${viewMode === '2D' ? 'primary' : ''}`} onClick={() => setViewMode('2D')} style={{ padding: '3px 8px', fontSize: '10px' }}>2D</button>
           <button className={`button small ${viewMode === '3D' ? 'primary' : ''}`} onClick={() => setViewMode('3D')} style={{ padding: '3px 8px', fontSize: '10px' }}>3D</button>
@@ -301,6 +294,79 @@ export const Viewport: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Frequency Spectrum Bar (below heatmap toolbar) */}
+      {showHeatmap && results.length > 0 && (
+        <div style={{ position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'flex-end', gap: '2px', background: 'rgba(10,10,10,0.9)', padding: '8px 12px 6px', borderRadius: '8px', border: '1px solid var(--border-color)', backdropFilter: 'blur(8px)', zIndex: 100, minWidth: '500px' }}>
+          {octaveFreqs.map((freq, i) => {
+            const isActive = displayBand === i;
+            const height = avgSplPerBand[i] > -100 ? Math.max(4, ((avgSplPerBand[i] - minAll) / range) * 30) : 2;
+            const label = freq >= 1000 ? `${freq/1000}k` : freq;
+            return (
+              <div
+                key={i}
+                onClick={() => setSelectedBand(i)}
+                onMouseEnter={() => setHoveredBand(i)}
+                onMouseLeave={() => setHoveredBand(null)}
+                style={{
+                  width: '14px',
+                  height: `${height}px`,
+                  background: isActive ? 'var(--accent-primary)' : 'rgba(0, 229, 255, 0.2)',
+                  borderRadius: '2px 2px 0 0',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center'
+                }}
+              >
+                {i % 3 === 0 && (
+                  <span style={{ fontSize: '7px', color: '#64748B', marginTop: '4px', transform: 'translateY(2px)' }}>{label}</span>
+                )}
+                {/* Hover tooltip */}
+                {hoveredBand === i && (
+                  <div style={{
+                    position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
+                    background: 'rgba(0,0,0,0.95)', padding: '4px 8px', borderRadius: '4px',
+                    border: '1px solid var(--border-color)', whiteSpace: 'nowrap', marginBottom: '4px',
+                    pointerEvents: 'none', zIndex: 200
+                  }}>
+                    <div style={{ fontSize: '9px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>{freq} Hz</div>
+                    <div style={{ fontSize: '9px', color: '#E2E8F0' }}>Avg SPL: {avgSplPerBand[i].toFixed(1)} dB</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {/* Broadband button */}
+          <div
+            onClick={() => setSelectedBand(24)}
+            onMouseEnter={() => setHoveredBand(24)}
+            onMouseLeave={() => setHoveredBand(null)}
+            style={{
+              width: '28px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: selectedBand === 24 ? 'var(--accent-primary)' : 'rgba(0, 229, 255, 0.1)',
+              borderRadius: '4px', cursor: 'pointer', marginLeft: '4px', fontSize: '8px', fontWeight: 'bold',
+              color: selectedBand === 24 ? '#000' : '#64748B', transition: 'all 0.15s',
+              position: 'relative'
+            }}
+          >
+            BB
+            {hoveredBand === 24 && (
+              <div style={{
+                position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
+                background: 'rgba(0,0,0,0.95)', padding: '4px 8px', borderRadius: '4px',
+                border: '1px solid var(--border-color)', whiteSpace: 'nowrap', marginBottom: '4px',
+                pointerEvents: 'none', zIndex: 200
+              }}>
+                <div style={{ fontSize: '9px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>Broadband</div>
+                <div style={{ fontSize: '9px', color: '#E2E8F0' }}>1kHz reference</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

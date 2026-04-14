@@ -163,22 +163,68 @@ export const AnalysisStage: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. RIGHT SIDEBAR: GLOBAL STATS & LEGEND */}
-      <div style={{ width: '300px', background: '#05070A', borderLeft: '1px solid #1A1F26', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '20px', borderBottom: '1px solid #1A1F26' }}>
-                <h3 style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', marginBottom: '15px', letterSpacing: '1px' }}>Global Performance</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div className="glass-panel" style={{ padding: '12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>
+      {/* 3. RIGHT SIDEBAR: RECEIVER METRICS & GLOBAL STATS */}
+      <div style={{ width: '280px', background: '#05070A', borderLeft: '1px solid #1A1F26', display: 'flex', flexDirection: 'column' }}>
+
+            {/* SELECTED RECEIVER METRICS (moved out of 3D viewport) */}
+            {currentResult && (
+              <div style={{ padding: '16px', borderBottom: '1px solid #1A1F26' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                      <h3 style={{ fontSize: '11px', color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>
+                          {currentResult.receiverId}
+                      </h3>
+                      <div style={{
+                          padding: '2px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: 'bold',
+                          background: currentResult.metrics.sti > 0.6 ? 'rgba(74, 222, 128, 0.15)' : 'rgba(251, 146, 60, 0.15)',
+                          color: currentResult.metrics.sti > 0.6 ? '#4ADE80' : '#FB923C'
+                      }}>
+                          STI {currentResult.metrics.sti.toFixed(2)}
+                      </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div style={{ padding: '10px', background: 'rgba(0, 229, 255, 0.05)', borderRadius: '6px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#F8FAFC' }}>
+                              {currentResult.metrics.t30[selectedBand === 24 ? 13 : selectedBand].toFixed(2)}s
+                          </div>
+                          <div style={{ fontSize: '9px', color: '#64748B', marginTop: '2px' }}>T30</div>
+                      </div>
+                      <div style={{ padding: '10px', background: 'rgba(0, 229, 255, 0.05)', borderRadius: '6px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#F8FAFC' }}>
+                              {currentResult.metrics.spl[selectedBand === 24 ? 13 : selectedBand].toFixed(1)}dB
+                          </div>
+                          <div style={{ fontSize: '9px', color: '#64748B', marginTop: '2px' }}>SPL</div>
+                      </div>
+                      <div style={{ padding: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#F8FAFC' }}>
+                              {currentResult.metrics.c80[selectedBand === 24 ? 13 : selectedBand].toFixed(1)}dB
+                          </div>
+                          <div style={{ fontSize: '9px', color: '#64748B', marginTop: '2px' }}>C80</div>
+                      </div>
+                      <div style={{ padding: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#F8FAFC' }}>
+                              {(currentResult.metrics.d50[selectedBand === 24 ? 13 : selectedBand] * 100).toFixed(0)}%
+                          </div>
+                          <div style={{ fontSize: '9px', color: '#64748B', marginTop: '2px' }}>D50</div>
+                      </div>
+                  </div>
+              </div>
+            )}
+
+            {/* GLOBAL PERFORMANCE */}
+            <div style={{ padding: '16px', borderBottom: '1px solid #1A1F26' }}>
+                <h3 style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', marginBottom: '10px', letterSpacing: '1px' }}>Global Performance</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>
                             {(receivers.reduce((a, b) => a + b.metrics.sti, 0) / receivers.length).toFixed(2)}
                         </div>
-                        <div style={{ fontSize: '9px', color: '#64748B' }}>AVG STI</div>
+                        <div style={{ fontSize: '8px', color: '#64748B' }}>AVG STI</div>
                     </div>
-                    <div className="glass-panel" style={{ padding: '12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
+                    <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
                             {(receivers.reduce((a, b) => a + b.metrics.t30[13], 0) / receivers.length).toFixed(2)}s
                         </div>
-                        <div style={{ fontSize: '9px', color: '#64748B' }}>AVG T30</div>
+                        <div style={{ fontSize: '8px', color: '#64748B' }}>AVG T30</div>
                     </div>
                 </div>
             </div>

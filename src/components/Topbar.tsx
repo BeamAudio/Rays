@@ -1,19 +1,36 @@
 import React, { useRef } from 'react';
-import { Play, Save, Loader2, FolderOpen, Layout, Globe, PenTool, RotateCcw, RotateCw, Activity, Camera } from 'lucide-react';
+import { Play, Save, Loader2, FolderOpen, Layout, Globe, PenTool, RotateCcw, RotateCw, Activity, Camera, Maximize2, Minimize2 } from 'lucide-react';
 import { useProjectStore } from '../state/project_state';
 import * as THREE from 'three';
 import SimulationWorker from '../engine/simulation_worker?worker';
 import { auralizer } from '../engine/auralizer';
 
 export const Topbar: React.FC = () => {
-  const { 
-    objects, setSimulating, setSimulationResults, 
+  const {
+    objects, setSimulating, setSimulationResults,
     isSimulating, simulationProgress, environmentSettings,
     currentView, setCurrentView, undo, redo, past, future,
     showAnalysis, toggleAnalysis
   } = useProjectStore();
-  
+
   const loadRef = useRef<HTMLInputElement>(null);
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  };
+
+  React.useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
 
   const handleSaveProject = () => {
     const data = JSON.stringify(objects, null, 2);
@@ -219,6 +236,9 @@ export const Topbar: React.FC = () => {
         </button>
         <button className="button" onClick={handleCaptureSnapshot} title="Take Snapshot" style={{ padding: '5px' }}>
           <Camera size={14} />
+        </button>
+        <button className="button" onClick={toggleFullscreen} title="Toggle Fullscreen" style={{ padding: '5px' }}>
+          {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
         </button>
 
         {/* Analysis toggle */}
