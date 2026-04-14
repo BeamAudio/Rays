@@ -74,11 +74,11 @@ const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect
           {obj.type === 'mesh' ? (
             <meshStandardMaterial color={isSelected ? "#FFFFFF" : matProps.color} transparent={matProps.transparent || isSelected} opacity={isSelected ? 0.8 : matProps.opacity} roughness={matProps.roughness} metalness={matProps.metalness} side={THREE.DoubleSide} depthWrite={!matProps.transparent} />
           ) : obj.type === 'source' ? (
-            <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={2} />
+            <meshStandardMaterial color="#FFFFFF" emissive="#FFFFFF" emissiveIntensity={2} />
           ) : obj.type === 'plane' ? (
-            <meshStandardMaterial color="#008080" transparent opacity={0.3} side={THREE.DoubleSide} wireframe />
+            <meshStandardMaterial color="#888888" transparent opacity={0.3} side={THREE.DoubleSide} wireframe />
           ) : (
-            <meshStandardMaterial color="#ff00ff" emissive="#ff00ff" emissiveIntensity={1} />
+            <meshStandardMaterial color="#AAAAAA" emissive="#AAAAAA" emissiveIntensity={1} />
           )}
         </mesh>
       )}
@@ -167,7 +167,7 @@ const VolumetricModes: React.FC<{ roomDims: { L: number, H: number, W: number },
 };
 
 const SceneContent: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
-  const { objects, selectedId, setSelected, results, showRays, selectedRayIndex, setSelectedRayIndex, currentTime, showRoomModes, selectedModeIdx } = useProjectStore();
+  const { objects, selectedId, setSelected, results, showRays, selectedRayIndex, setSelectedRayIndex, currentTime, showRoomModes, selectedModeIdx, currentView } = useProjectStore();
   const selectedResult = results.find(r => r.receiverId === selectedId);
   const displayResult = selectedResult;
 
@@ -210,7 +210,7 @@ const SceneContent: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
       {objects.map((obj) => (
         <ObjectRenderer key={obj.id} obj={obj} isSelected={selectedId === obj.id} onSelect={() => setSelected(obj.id)} readOnly={readOnly} />
       ))}
-      {showRays && displayResult?.rayPaths && (
+      {showRays && displayResult?.rayPaths && currentView === 'ANALYSIS' && (
         <group>
           {displayResult.rayPaths.map((path, i) => {
             const isSelected = selectedRayIndex === i;
@@ -240,7 +240,7 @@ const SceneContent: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
           })}
         </group>
       )}
-      {showRoomModes && roomInfo && currentMode && (
+      {showRoomModes && roomInfo && currentMode && currentView === 'ANALYSIS' && (
         <VolumetricModes roomDims={roomInfo.dims} center={roomInfo.center} mode={currentMode} />
       )}
       <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 1.75} />
