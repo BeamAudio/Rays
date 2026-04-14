@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useProjectStore } from '../state/project_state';
 import type { SpeakerModel } from '../types';
-import { Search, Download, Check, Info, ArrowUpRight } from 'lucide-react';
+import { Search, Download, Check, Info, ArrowUpRight, X } from 'lucide-react';
 import { DirectivityLibrary } from '../engine/directivity_library';
+import { Canvas } from '@react-three/fiber';
+import { BalloonVisualizer } from './BalloonVisualizer';
 
 export const Marketplace: React.FC = () => {
   const { installedModels, installModel } = useProjectStore();
   const [search, setSearch] = useState('');
+  const [previewModel, setPreviewModel] = useState<SpeakerModel | null>(null);
 
   const [cloudModels, setCloudModels] = useState<SpeakerModel[]>([]);
 
@@ -107,6 +110,19 @@ export const Marketplace: React.FC = () => {
               {model.specs}
             </div>
 
+      {previewModel && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="glass-panel" style={{ width: '600px', height: '400px', position: 'relative', padding: '20px' }}>
+            <button onClick={() => setPreviewModel(null)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'transparent', border: 'none', color: '#fff' }}><X size={20}/></button>
+            <h3 style={{ fontSize: '18px', marginBottom: '10px' }}>{previewModel.name} Directivity</h3>
+            <Canvas>
+              <BalloonVisualizer hSpread={60} vSpread={90} tilt={0} pan={0} />
+            </Canvas>
+          </div>
+        </div>
+      )}
+
+      {/* Market Grid... */}
             <div style={{ display: 'flex', gap: '10px' }}>
               <button 
                 className={`button ${isInstalled(model.id) ? '' : 'primary'}`} 
@@ -116,7 +132,7 @@ export const Marketplace: React.FC = () => {
               >
                 {isInstalled(model.id) ? <><Check size={16} /> Installed</> : <><Download size={16} /> Install Free</>}
               </button>
-              <button className="button" style={{ width: '40px', padding: 0 }} title="Preview Directivity">
+              <button className="button" style={{ width: '40px', padding: 0 }} title="Preview Directivity" onClick={() => setPreviewModel(model)}>
                 <ArrowUpRight size={16} />
               </button>
             </div>
