@@ -9,9 +9,9 @@
   --text-primary: #f0f0f0;
   --text-secondary: #94A3B8;
   
-  --accent-primary: #2E7D5E; /* Dark Tealish Green */
-  --accent-secondary: #1B5E3B;
-  --accent-glow: rgba(46, 125, 94, 0.35);
+  --accent-primary: #097325; /* Green */
+  --accent-secondary: #064D18;
+  --accent-glow: rgba(9, 115, 37, 0.35);
   
   --warning-primary: #FF8F00; /* Safety Orange */
   
