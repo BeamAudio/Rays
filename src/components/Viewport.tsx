@@ -167,15 +167,30 @@ const SceneContent: React.FC = () => {
   const displayResult = selectedResult;
 
   const roomInfo = React.useMemo(() => {
+    // Only detect walls from the Room Wizard (they have shape === 'plane' and type === 'mesh')
+    // Exclude sources, receivers, analysis planes, and standalone boxes/spheres
+    const walls = objects.filter(o =>
+      o.type === 'mesh' && o.shape === 'plane' && o.name.includes('_')
+    );
+    if (walls.length === 0) return null;
+
+    // Use the actual wall triangle positions for accurate room bounds
     let minX = Infinity, minY = Infinity, minZ = Infinity;
     let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-    const meshes = objects.filter(o => o.type === 'mesh' || o.shape === 'box');
-    if (meshes.length === 0) return null;
-    meshes.forEach(m => {
-        const halfX = m.scale[0] / 2; const halfY = m.scale[1] / 2; const halfZ = m.scale[2] / 2;
-        minX = Math.min(minX, m.position[0] - halfX); minY = Math.min(minY, m.position[1] - halfY); minZ = Math.min(minZ, m.position[2] - halfZ);
-        maxX = Math.max(maxX, m.position[0] + halfX); maxY = Math.max(maxY, m.position[1] + halfY); maxZ = Math.max(maxZ, m.position[2] + halfZ);
+
+    walls.forEach(w => {
+      if (w.triangles) {
+        for (let i = 0; i < w.triangles.length; i += 3) {
+          minX = Math.min(minX, w.triangles[i]);
+          minY = Math.min(minY, w.triangles[i + 1]);
+          minZ = Math.min(minZ, w.triangles[i + 2]);
+          maxX = Math.max(maxX, w.triangles[i]);
+          maxY = Math.max(maxY, w.triangles[i + 1]);
+          maxZ = Math.max(maxZ, w.triangles[i + 2]);
+        }
+      }
     });
+
     const dims = { L: Math.max(0.1, maxX - minX), H: Math.max(0.1, maxY - minY), W: Math.max(0.1, maxZ - minZ) };
     return { dims, center: new THREE.Vector3((minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2), modes: calculateRoomModes(dims, 150) };
   }, [objects]);

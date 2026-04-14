@@ -178,19 +178,29 @@ export const BottomPanel: React.FC = () => {
                 {activeTab === 'distribution' && (
                     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                          <div style={{ flex: 1, display: 'flex', gap: '2px', alignItems: 'flex-end', paddingBottom: '30px' }}>
-                            {selectedResult.metrics.spl.map((s: number, i: number) => {
-                                const height = Math.max(5, Math.min(100, ((s - 30) / (110 - 30)) * 100));
-                                return (
-                                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', height: '100%', justifyContent: 'flex-end' }}>
-                                        <div 
-                                            onClick={() => setSelectedBand(i)}
-                                            style={{ width: '100%', height: `${height}%`, background: i === (selectedBand === 24 ? 13 : selectedBand) ? '#00E5FF' : '#1A1F26', borderRadius: '2px 2px 0 0', cursor: 'pointer' }} 
-                                        >
-                                            {i % 3 === 0 && <span style={{ position: 'absolute', bottom: '-20px', left: '50%', transform: 'translateX(-50%) rotate(-45deg)', fontSize: '8px', color: '#64748B' }}>{getOctaveFreq(i)}</span>}
+                            {(() => {
+                                const validSpls = selectedResult.metrics.spl.filter((s: number) => isFinite(s) && s > -100);
+                                if (validSpls.length === 0) return <div style={{ padding: '20px', color: '#64748B' }}>No data</div>;
+                                const minS = Math.min(...validSpls);
+                                const maxS = Math.max(...validSpls);
+                                const range = maxS - minS || 1;
+                                return selectedResult.metrics.spl.map((s: number, i: number) => {
+                                    const height = isFinite(s) && s > -100 ? Math.max(5, ((s - minS) / range) * 100) : 2;
+                                    return (
+                                        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end', position: 'relative' }}>
+                                            <div
+                                                onClick={() => setSelectedBand(i)}
+                                                style={{ width: '100%', height: `${height}%`, background: i === (selectedBand === 24 ? 13 : selectedBand) ? '#00E5FF' : '#1A1F26', borderRadius: '2px 2px 0 0', cursor: 'pointer', transition: 'all 0.15s' }}
+                                            />
+                                            {i % 3 === 0 && (
+                                                <span style={{ position: 'absolute', bottom: '-20px', left: '50%', transform: 'translateX(-50%)', fontSize: '7px', color: '#64748B', whiteSpace: 'nowrap' }}>
+                                                    {getOctaveFreq(i)}
+                                                </span>
+                                            )}
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                });
+                            })()}
                          </div>
                     </div>
                 )}

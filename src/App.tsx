@@ -49,16 +49,32 @@ function App() {
       <Topbar />
       
       {currentView === 'WORKSPACE' && (
-        <div className="main-content" style={{ display: 'flex', width: '100%', height: 'calc(100vh - 60px)', position: 'relative' }}>
-          <LeftPanel />
-          <div className="viewport-container" style={{ flex: 1, position: 'relative', zIndex: 1 }}>
-            <ErrorBoundary>
-              <Suspense fallback={<div className="loading">Loading Beam Audio Rays...</div>}>
-                <Viewport />
-              </Suspense>
-            </ErrorBoundary>
+        <div className="main-content" style={{ display: 'flex', flexDirection: 'column', width: '100%', height: 'calc(100vh - 60px)', position: 'relative' }}>
+          {/* Edit Mode Indicator Bar */}
+          <div style={{ height: '32px', background: '#0A0E14', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: '12px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0, 229, 255, 0.08)', padding: '3px 10px', borderRadius: '5px', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
+              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-primary)' }} />
+              <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Edit</span>
+            </div>
+            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{objects.length} objects</span>
+            {selectedId && (
+              <span style={{ fontSize: '11px', color: 'var(--accent-primary)' }}>
+                / {objects.find(o => o.id === selectedId)?.name || '—'}
+              </span>
+            )}
           </div>
-          <RightPanel />
+
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            <LeftPanel />
+            <div className="viewport-container" style={{ flex: 1, position: 'relative', zIndex: 1 }}>
+              <ErrorBoundary>
+                <Suspense fallback={<div className="loading">Loading Beam Audio Rays...</div>}>
+                  <Viewport />
+                </Suspense>
+              </ErrorBoundary>
+            </div>
+            <RightPanel />
+          </div>
           {showAnalysis && <BottomPanel />}
         </div>
       )}
