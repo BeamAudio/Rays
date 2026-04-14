@@ -31,6 +31,7 @@ export interface ProjectState {
   auralizationSettings: { sampleUrl: string; dry: number; wet: number; isPlaying: boolean; };
   showAnalysis: boolean;
   installedModels: SpeakerModel[];
+  hasSeenTutorial: boolean;
   setEnvironmentSettings: (settings: Partial<EnvironmentSettings>) => void;
   addObject: (obj: Omit<SceneObject, 'id'>) => void;
   removeObject: (id: string) => void;
@@ -53,6 +54,7 @@ export interface ProjectState {
   redo: () => void;
   installModel: (model: SpeakerModel) => void;
   uninstallModel: (id: string) => void;
+  dismissTutorial: () => void;
 }
 
 export const useProjectStore = create<ProjectState>()(
@@ -88,6 +90,7 @@ export const useProjectStore = create<ProjectState>()(
       currentTime: 500,
       ambientNoiseSPL: Array(24).fill(30),
       auralizationSettings: { sampleUrl: 'https://www.soundjay.com/buttons/sounds/beep-01a.mp3', dry: 1.0, wet: 0.5, isPlaying: false },
+      hasSeenTutorial: false,
       
       setEnvironmentSettings: (settings) => set((state) => ({ 
         environmentSettings: { ...state.environmentSettings, ...settings } 
@@ -163,6 +166,7 @@ export const useProjectStore = create<ProjectState>()(
       uninstallModel: (id) => set((state) => ({ 
         installedModels: state.installedModels.filter(m => m.id !== id) 
       })),
+      dismissTutorial: () => set({ hasSeenTutorial: true }),
     }),
     {
       name: 'beam-audio-project',

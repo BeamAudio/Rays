@@ -7,6 +7,7 @@ import { Topbar } from './components/Topbar';
 import { Marketplace } from './components/Marketplace';
 import { SpeakerDesigner } from './components/SpeakerDesigner';
 import { AnalysisStage } from './components/AnalysisStage';
+import { Tutorial } from './components/Tutorial';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useProjectStore } from './state/project_state';
 import { Maximize2, Play } from 'lucide-react';
@@ -99,6 +100,7 @@ function App() {
         <StartScreen onStart={handleStart} />
       ) : (
         <>
+          <Tutorial />
           <Topbar />
           
           {currentView === 'WORKSPACE' && (

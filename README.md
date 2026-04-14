@@ -1,75 +1,43 @@
-# React + TypeScript + Vite
+# Beam Audio Rays
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Consultancy-Grade Acoustic Simulation Engine**
 
-Currently, two official plugins are available:
+Rays is a modern, high-performance acoustic raytracing and room simulation tool built for acoustic consultants and electro-acoustic engineers. It provides interactive, browser-based 3D modeling and computes standard ISO 3382 metrics, energy heatmaps, and Speech Transmission Index (STI) using stochastic raytracing algorithms.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- **Geometric Acoustics:** Fast stochastic raytracing engine with parallelized Web Workers.
+- **Consultancy Standards:** Full support for 1/1 and 1/3 octave bands, A-weighted broadband summations, and standard metrics (T30, C80, D50, STI).
+- **Material Library:** Assign frequency-dependent absorption, scattering, and transmission to any surface.
+- **Directivity Models:** Import and utilize complex speaker directivity patterns (Omni, Cardioid, Horns).
+- **Auralization:** Real-time convolution reverb of impulse responses against dry anechoic samples.
+- **Persistent Workspace:** Entire project states and simulation results are seamlessly stored locally via `zustand/persist`, ensuring your data survives page reloads even on static hosts like GitHub Pages.
+- **Analysis Overlays:** Volumetric room mode estimation (now based on arbitrary scene bounds), energy heatmaps, and individual reflection visualization.
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+## Getting Started
 
-Note: This will impact Vite dev & build performances.
+Visit the live deployment or run locally:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Quick Workflow
+1. **Workspace Mode:** Construct a basic shoebox room using the "Room Wizard" in the left panel, or import an existing `.gltf` CAD file.
+2. **Add Components:** Spawn acoustic sources and receivers into your scene. 
+3. **Set Properties:** Select individual walls or speakers to edit their acoustic materials and directivity patterns via the right-side Inspector.
+4. **Compute:** Hit "Compute" in the top bar. The application will trace up to 100,000 rays to determine the impulse response.
+5. **Analysis Mode:** Once computed, switch to Analysis Mode to view detailed T30 decay curves, STI distributions, and A-weighted Heatmaps across your measurement planes.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Development Stack
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- React + TypeScript + Vite
+- Zustand (State Management + LocalStorage Persistence)
+- Three.js / React Three Fiber (3D Visualization)
+- Lucide React (Icons)
+- League Spartan (Typography)
+
+## License
+
+MIT

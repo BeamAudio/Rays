@@ -26,7 +26,7 @@ const MetricCard: React.FC<{ label: string, value: string, unit: string, status:
             <span style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-brand)', color: '#F8FAFC' }}>{value}</span>
             <span style={{ fontSize: '12px', color: '#64748B' }}>{unit}</span>
         </div>
-        <div style={{ marginTop: '8px', fontSize: '9px', color: status === 'Excellent' || status === 'Good' ? '#4ADE80' : 'var(--accent-primary)', background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
+        <div style={{ marginTop: '8px', fontSize: '9px', color: status === 'Excellent' || status === 'Good' ? '#FFFFFF' : 'var(--accent-primary)', background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
             STATUS: {status}
         </div>
     </div>
@@ -167,7 +167,7 @@ export const BottomPanel: React.FC = () => {
 
                 {activeTab === 'signal' && (
                     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                         <div style={{ flex: 1, position: 'relative', background: '#05070A', border: '1px solid #1A1F26', borderRadius: '4px' }}>
+                         <div style={{ flex: 1, position: 'relative', background: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '4px' }}>
                             <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
                             <div ref={scrubberRef} onMouseDown={handleScrub} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'crosshair' }} />
                             <div style={{ position: 'absolute', top: 0, bottom: 0, width: '1px', background: '#FF3D00', left: `${(currentTime / etcView.w) * 100}%`, pointerEvents: 'none', boxShadow: '0 0 10px #FF3D00' }} />
@@ -217,6 +217,24 @@ export const BottomPanel: React.FC = () => {
                     </button>
                     <div><div style={{ fontSize: '12px', fontWeight: 'bold' }}>Live Convolution</div><div style={{ fontSize: '9px', color: '#FFFFFF' }}>STOCHASTIC SYNTHESIS</div></div>
                 </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <label style={{ fontSize: '9px', textTransform: 'uppercase', color: '#64748B' }}>Dry Source Audio</label>
+                    <input 
+                      type="file" 
+                      accept="audio/*" 
+                      style={{ fontSize: '10px', color: '#E0E6ED' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const url = URL.createObjectURL(file);
+                          auralizer.setSampleFromUrl(url);
+                          setAuralization({ sampleUrl: url });
+                        }
+                      }}
+                    />
+                </div>
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                     <label style={{ fontSize: '9px', textTransform: 'uppercase', color: '#64748B' }}>Wet Mix</label>
                     <input type="range" min="0" max="1" step="0.01" value={auralizationSettings.wet} onChange={(e) => {
