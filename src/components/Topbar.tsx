@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { 
   Play, Save, Loader2, FolderOpen, Layout, PenTool, 
-  Activity, Camera, Box, Layers, Zap
+  Activity, Camera, Box, Layers, Zap, Globe
 } from 'lucide-react';
 import { useProjectStore } from '../state/project_state';
 import * as THREE from 'three';
@@ -200,6 +200,13 @@ export const Topbar: React.FC = () => {
         </button>
         <button
           className="button"
+          style={navButtonStyle(currentView === 'MARKETPLACE')}
+          onClick={() => setCurrentView('MARKETPLACE')}
+        >
+          <Globe size={14} /> Marketplace
+        </button>
+        <button
+          className="button"
           style={navButtonStyle(currentView === 'ANALYSIS')}
           onClick={() => setCurrentView('ANALYSIS')}
         >
@@ -216,7 +223,7 @@ export const Topbar: React.FC = () => {
 
       {/* Middle Context Toggles */}
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '4px 12px', borderRadius: '20px', border: '1px solid var(--border-color)' }}>
-        <div style={{ display: 'flex', gap: '4px', borderRight: '1px solid var(--border-color)', paddingRight: '8px' }}>
+        <div style={{ display: 'flex', gap: '4px', borderRight: currentView === 'ANALYSIS' ? '1px solid var(--border-color)' : 'none', paddingRight: currentView === 'ANALYSIS' ? '8px' : '0' }}>
            <button 
              style={toggleButtonStyle(viewMode === '2D')} 
              onClick={() => setViewMode('2D')}
@@ -233,35 +240,39 @@ export const Topbar: React.FC = () => {
            </button>
         </div>
 
-        <button 
-          style={toggleButtonStyle(showRays)} 
-          onClick={() => setVisualizationOptions({ showRays: !showRays })}
-          title="Toggle Ray Paths"
-        >
-          <Zap size={14} /> <span style={{ display: window.innerWidth > 1000 ? 'inline' : 'none' }}>Rays</span>
-        </button>
-        
-        <button 
-          style={toggleButtonStyle(showHeatmap)} 
-          onClick={() => setVisualizationOptions({ showHeatmap: !showHeatmap })}
-          title="Toggle Acoustic Heatmap"
-        >
-          <Layers size={14} /> <span style={{ display: window.innerWidth > 1000 ? 'inline' : 'none' }}>Heatmap</span>
-        </button>
+        {currentView === 'ANALYSIS' && (
+          <>
+            <button 
+              style={toggleButtonStyle(showRays)} 
+              onClick={() => setVisualizationOptions({ showRays: !showRays })}
+              title="Toggle Ray Paths"
+            >
+              <Zap size={14} /> <span style={{ display: window.innerWidth > 1000 ? 'inline' : 'none' }}>Rays</span>
+            </button>
+            
+            <button 
+              style={toggleButtonStyle(showHeatmap)} 
+              onClick={() => setVisualizationOptions({ showHeatmap: !showHeatmap })}
+              title="Toggle Acoustic Heatmap"
+            >
+              <Layers size={14} /> <span style={{ display: window.innerWidth > 1000 ? 'inline' : 'none' }}>Heatmap</span>
+            </button>
 
-        <button 
-          style={toggleButtonStyle(showRoomModes)} 
-          onClick={() => setVisualizationOptions({ showRoomModes: !showRoomModes })}
-          title="Toggle Room Modes"
-        >
-          <Box size={14} /> <span style={{ display: window.innerWidth > 1000 ? 'inline' : 'none' }}>Modes</span>
-        </button>
+            <button 
+              style={toggleButtonStyle(showRoomModes)} 
+              onClick={() => setVisualizationOptions({ showRoomModes: !showRoomModes })}
+              title="Toggle Room Modes"
+            >
+              <Box size={14} /> <span style={{ display: window.innerWidth > 1000 ? 'inline' : 'none' }}>Modes</span>
+            </button>
+          </>
+        )}
       </div>
 
       <div className="topbar-actions" style={{ display: 'flex', gap: '4px', minWidth: '200px', justifyContent: 'flex-end', alignItems: 'center' }}>
         {/* File operations group */}
         <div style={{ display: 'flex', gap: '2px', borderRight: '1px solid var(--border-color)', paddingRight: '6px' }}>
-          <input type="file" ref={loadRef} style={{ display: 'none' }} accept=".json" onChange={handleLoadProject} />
+          <input type="file" ref={loadRef} style={{ display: 'none' }} accept=".rays" onChange={handleLoadProject} />
           <button className="button" onClick={() => loadRef.current?.click()} title="Open Project" style={{ padding: '6px' }}>
             <FolderOpen size={14} />
           </button>
