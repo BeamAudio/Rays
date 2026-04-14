@@ -179,7 +179,9 @@ export const useProjectStore = create<ProjectState>()(
         environmentSettings: state.environmentSettings,
         showRays: state.showRays,
         showHeatmap: state.showHeatmap,
-        maxVisibleBounces: state.maxVisibleBounces
+        maxVisibleBounces: state.maxVisibleBounces,
+        results: state.results,
+        hasSeenTutorial: state.hasSeenTutorial
       }),
       onRehydrateStorage: () => (state, error) => {
         if (error) console.error('[Hydration Error]:', error);
