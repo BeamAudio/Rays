@@ -248,7 +248,7 @@ const SceneContent: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
   );
 };
 
-export const Viewport: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
+export const Viewport: React.FC = () => {
   const {
     showHeatmap,
     results, selectedBand, setSelectedBand, viewMode,
@@ -371,10 +371,6 @@ export const Viewport: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
           </button>
         </div>
       )}
-    </div>
-  );
-};
- )}
     </div>
   );
 };
