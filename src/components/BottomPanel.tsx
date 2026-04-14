@@ -10,8 +10,8 @@ const TabButton: React.FC<{ active: boolean, onClick: () => void, icon: React.Re
         onClick={onClick}
         style={{ 
             display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', background: 'none', border: 'none', 
-            borderBottom: active ? '2px solid #00E5FF' : '2px solid transparent',
-            color: active ? '#00E5FF' : '#64748B', fontSize: '11px', fontWeight: active ? 'bold' : 'normal',
+            borderBottom: active ? '2px solid var(--accent-primary)' : '2px solid transparent',
+            color: active ? 'var(--accent-primary)' : '#64748B', fontSize: '11px', fontWeight: active ? 'bold' : 'normal',
             cursor: 'pointer', transition: 'all 0.2s'
         }}
     >
@@ -26,7 +26,7 @@ const MetricCard: React.FC<{ label: string, value: string, unit: string, status:
             <span style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-brand)', color: '#F8FAFC' }}>{value}</span>
             <span style={{ fontSize: '12px', color: '#64748B' }}>{unit}</span>
         </div>
-        <div style={{ marginTop: '8px', fontSize: '9px', color: status === 'Excellent' || status === 'Good' ? '#4ADE80' : '#00E5FF', background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
+        <div style={{ marginTop: '8px', fontSize: '9px', color: status === 'Excellent' || status === 'Good' ? '#4ADE80' : 'var(--accent-primary)', background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px', display: 'inline-block' }}>
             STATUS: {status}
         </div>
     </div>
