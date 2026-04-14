@@ -192,7 +192,7 @@ export const Topbar: React.FC = () => {
 
   const toggleButtonStyle = (active: boolean): React.CSSProperties => ({
     padding: '6px',
-    background: active ? 'rgba(0, 229, 255, 0.1)' : 'transparent',
+    background: active ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
     color: active ? 'var(--accent-primary)' : 'var(--text-secondary)',
     border: 'none',
     borderRadius: '4px',

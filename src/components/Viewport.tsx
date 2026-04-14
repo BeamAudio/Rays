@@ -72,7 +72,7 @@ const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect
           ) : <boxGeometry args={[1, 1, 1]} />}
 
           {obj.type === 'mesh' ? (
-            <meshStandardMaterial color={isSelected ? "#00e5ff" : matProps.color} transparent={matProps.transparent || isSelected} opacity={isSelected ? 0.8 : matProps.opacity} roughness={matProps.roughness} metalness={matProps.metalness} side={THREE.DoubleSide} depthWrite={!matProps.transparent} />
+            <meshStandardMaterial color={isSelected ? "#FFFFFF" : matProps.color} transparent={matProps.transparent || isSelected} opacity={isSelected ? 0.8 : matProps.opacity} roughness={matProps.roughness} metalness={matProps.metalness} side={THREE.DoubleSide} depthWrite={!matProps.transparent} />
           ) : obj.type === 'source' ? (
             <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={2} />
           ) : obj.type === 'plane' ? (
@@ -346,7 +346,7 @@ export const Viewport: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
             onMouseLeave={() => setHoveredBand(null)}
             style={{
               width: '32px', height: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              background: selectedBand === 24 ? 'var(--accent-primary)' : 'rgba(0, 229, 255, 0.1)',
+              background: selectedBand === 24 ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.1)',
               borderRadius: '4px', cursor: 'pointer', marginLeft: '8px', fontSize: '8px', fontWeight: 'bold',
               color: selectedBand === 24 ? '#000' : '#64748B', transition: 'all 0.15s',
               position: 'relative'

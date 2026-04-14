@@ -90,7 +90,7 @@ export const RightPanel: React.FC = () => {
               <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.5 }}>▼</div>
             </div>
           </div>
-          <div style={{ marginTop: '20px', padding: '10px', background: 'rgba(0, 229, 255, 0.05)', borderRadius: '6px', border: '1px solid rgba(0, 229, 255, 0.1)' }}>
+          <div style={{ marginTop: '20px', padding: '10px', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
             <p style={{ fontSize: '10px', color: 'var(--accent-primary)', margin: 0, lineHeight: '1.4' }}>
               Analysis mode active. Geometric properties are locked for the current simulation set.
             </p>

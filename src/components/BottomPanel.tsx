@@ -20,7 +20,7 @@ const TabButton: React.FC<{ active: boolean, onClick: () => void, icon: React.Re
 );
 
 const MetricCard: React.FC<{ label: string, value: string, unit: string, status: string }> = ({ label, value, unit, status }) => (
-    <div style={{ background: '#0F172A', border: '1px solid #1A1F26', padding: '15px', borderRadius: '8px' }}>
+    <div style={{ background: 'var(--bg-tertiary)', border: '1px solid #1A1F26', padding: '15px', borderRadius: '8px' }}>
         <div style={{ fontSize: '9px', textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.05em', marginBottom: '8px' }}>{label}</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
             <span style={{ fontSize: '24px', fontWeight: '800', fontFamily: 'var(--font-brand)', color: '#F8FAFC' }}>{value}</span>
@@ -99,7 +99,7 @@ export const BottomPanel: React.FC = () => {
             const db = 10 * Math.log10(arrival.energy[bandIdx] / maxVal + 1e-12);
             const py = yToPx(-db);
             ctx.beginPath();
-            ctx.strokeStyle = arrival.order === 0 ? "#ffffff" : arrival.order === 1 ? "#33cc33" : "#ffaa00";
+            ctx.strokeStyle = arrival.order === 0 ? "#ffffff" : arrival.order === 1 ? "#cccccc" : "#999999";
             ctx.lineWidth = arrival.order <= 1 ? 2 : 1;
             ctx.moveTo(px, height); ctx.lineTo(px, py); ctx.stroke();
         });
@@ -212,10 +212,10 @@ export const BottomPanel: React.FC = () => {
                     <button onClick={() => {
                         if (auralizationSettings.isPlaying) auralizer.stop(); else auralizer.play();
                         setAuralization({ isPlaying: !auralizationSettings.isPlaying });
-                    }} style={{ width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: '#00E5FF', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    }} style={{ width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: '#FFFFFF', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                         {auralizationSettings.isPlaying ? <Pause size={24} fill="#000" /> : <Play size={24} fill="#000" />}
                     </button>
-                    <div><div style={{ fontSize: '12px', fontWeight: 'bold' }}>Live Convolution</div><div style={{ fontSize: '9px', color: '#00E5FF' }}>STOCHASTIC SYNTHESIS</div></div>
+                    <div><div style={{ fontSize: '12px', fontWeight: 'bold' }}>Live Convolution</div><div style={{ fontSize: '9px', color: '#FFFFFF' }}>STOCHASTIC SYNTHESIS</div></div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                     <label style={{ fontSize: '9px', textTransform: 'uppercase', color: '#64748B' }}>Wet Mix</label>
@@ -223,10 +223,48 @@ export const BottomPanel: React.FC = () => {
                         const wet = parseFloat(e.target.value);
                         setAuralization({ wet });
                         auralizer.setMix(1 - wet, wet);
-                    }} style={{ width: '100%', accentColor: '#00E5FF' }} />
+                    }} style={{ width: '100%', accentColor: '#FFFFFF' }} />
                 </div>
             </div>
         </div>
     </div>
+  );
+};
+iv>
+    </div>
+  );
+};
+v>
+  );
+};
+iv>
+  );
+};
+v>
+  );
+};
+v>
+  );
+};
+
+v>
+  );
+};
+v>
+  );
+};
+
+};
+v>
+  );
+};
+v>
+  );
+};
+
+v>
+  );
+};
+v>
   );
 };

@@ -101,7 +101,7 @@ export const LeftPanel: React.FC = () => {
   };
 
   return (
-    <aside className="sidebar left-panel" style={{ width: '260px', background: '#05070A', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
+    <aside className="sidebar left-panel" style={{ width: '260px', background: 'var(--bg-secondary)', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
       <div className="sidebar-header" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <LayoutGrid size={16} color="var(--accent-primary)" />
@@ -133,15 +133,15 @@ export const LeftPanel: React.FC = () => {
           </div>
 
           <button style={actionButtonStyle} onClick={() => addObject({ name: 'Source', type: 'source', shape: 'sphere', position: [0, 2, 0], rotation: [0, 0, 0], scale: [0.5, 0.5, 0.5], intensity: 100, sourceType: 'point', directivity: 'omni' })}>
-            <Speaker size={14} color="var(--accent-primary)" /> Acoustic Source
+            <Speaker size={14} color="var(--text-primary)" /> Acoustic Source
           </button>
           
           <button style={actionButtonStyle} onClick={() => addObject({ name: 'Receiver', type: 'receiver', shape: 'sphere', position: [0, 1.5, 2], rotation: [0, 0, 0], scale: [0.2, 0.2, 0.2] })}>
-            <Mic size={14} color="#8B5CF6" /> Result Receiver
+            <Mic size={14} color="var(--text-primary)" /> Result Receiver
           </button>
 
           <button style={actionButtonStyle} onClick={() => addObject({ name: 'Analysis Plane', type: 'plane', shape: 'plane', position: [0, 0.1, 0], rotation: [-Math.PI / 2, 0, 0], scale: [10, 10, 1], resolution: 2 })}>
-            <Layers size={14} color="#F43F5E" /> Analysis Plane
+            <Layers size={14} color="var(--text-primary)" /> Analysis Plane
           </button>
 
           <div style={{ marginTop: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
@@ -151,7 +151,7 @@ export const LeftPanel: React.FC = () => {
             </button>
 
             <button 
-              style={{ ...actionButtonStyle, background: showWizard ? 'rgba(0, 229, 255, 0.1)' : 'rgba(255,255,255,0.03)', borderColor: showWizard ? 'var(--accent-primary)' : undefined }} 
+              style={{ ...actionButtonStyle, background: showWizard ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255,255,255,0.03)', borderColor: showWizard ? 'var(--accent-primary)' : undefined }} 
               onClick={() => setShowWizard(!showWizard)}
             >
               <Home size={14} /> Room Wizard
@@ -231,7 +231,7 @@ export const LeftPanel: React.FC = () => {
               onClick={() => setSelected(obj.id)}
               style={{
                 padding: '6px 10px',
-                background: selectedId === obj.id ? 'rgba(0, 229, 255, 0.08)' : 'rgba(255,255,255,0.02)',
+                background: selectedId === obj.id ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255,255,255,0.02)',
                 border: `1px solid ${selectedId === obj.id ? 'var(--accent-primary)' : 'rgba(255,255,255,0.05)'}`,
                 borderRadius: '6px',
                 cursor: 'pointer',
@@ -249,7 +249,7 @@ export const LeftPanel: React.FC = () => {
                   fontSize: '11px',
                   textDecoration: obj.muted ? 'line-through' : 'none', 
                   opacity: obj.muted ? 0.4 : 1,
-                  color: obj.solo ? 'var(--accent-primary)' : '#E2E8F0',
+                  color: obj.solo ? 'var(--accent-primary)' : 'var(--text-primary)',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis'
@@ -264,7 +264,7 @@ export const LeftPanel: React.FC = () => {
                       style={{ padding: '2px', background: 'transparent', border: 'none' }}
                       onClick={(e) => { e.stopPropagation(); updateObject(obj.id, { muted: !obj.muted }); }}
                     >
-                      {obj.muted ? <VolumeX size={12} color="#F43F5E" /> : <Volume2 size={12} opacity={0.4} />}
+                      {obj.muted ? <VolumeX size={12} color="var(--text-secondary)" /> : <Volume2 size={12} opacity={0.4} />}
                     </button>
                     <button 
                       className="button" 
@@ -280,7 +280,7 @@ export const LeftPanel: React.FC = () => {
                     style={{ padding: '2px', background: 'transparent', border: 'none', cursor: 'pointer' }}
                     onClick={(e) => { e.stopPropagation(); removeObject(obj.id); }}
                   >
-                    <Trash2 size={12} color="#F43F5E" />
+                    <Trash2 size={12} color="var(--text-secondary)" />
                   </button>
                 )}
               </div>

@@ -30,7 +30,7 @@ export const AnalysisStage: React.FC = () => {
 
   if (!currentResult) {
     return (
-        <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', background: '#05070A', color: '#64748B' }}>
+        <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', background: 'var(--bg-secondary)', color: '#64748B' }}>
             <div style={{ textAlign: 'center' }}>
                 <Target size={48} style={{ marginBottom: '20px', opacity: 0.2 }} />
                 <h3>No Simulation Data Available</h3>
@@ -41,15 +41,15 @@ export const AnalysisStage: React.FC = () => {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: 'calc(100vh - 60px)', background: '#020408', color: '#E2E8F0', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: 'calc(100vh - 60px)', background: 'var(--bg-primary)', color: '#E2E8F0', overflow: 'hidden' }}>
 
       {/* ANALYSIS MODE HEADER BAR — distinct from workspace topbar */}
-      <div style={{ height: '44px', background: '#070B12', borderBottom: '1px solid #1A1F26', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between', flexShrink: 0 }}>
+      <div style={{ height: '44px', background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', padding: '0 16px', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           {/* Mode badge */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(139, 92, 246, 0.12)', padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(139, 92, 246, 0.25)' }}>
-            <BarChart3 size={14} color="#8B5CF6" />
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#8B5CF6', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Analysis</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.12)', padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.25)' }}>
+            <BarChart3 size={14} color="var(--text-primary)" />
+            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Analysis</span>
           </div>
           {/* Receiver selector breadcrumb */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#64748B' }}>
@@ -60,7 +60,7 @@ export const AnalysisStage: React.FC = () => {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {/* Band selector */}
-          <div style={{ display: 'flex', background: '#0A0E14', padding: '2px', borderRadius: '6px', border: '1px solid #1A1F26' }}>
+          <div style={{ display: 'flex', background: 'var(--bg-secondary)', padding: '2px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
             {[500, 1000, 2000, 4000].map(f => {
                 const idx = [10, 13, 16, 19][[500, 1000, 2000, 4000].indexOf(f)];
                 return (
@@ -69,8 +69,8 @@ export const AnalysisStage: React.FC = () => {
                         onClick={() => setSelectedBand(idx)}
                         style={{
                             padding: '3px 8px', fontSize: '10px', border: 'none', borderRadius: '4px', cursor: 'pointer',
-                            background: selectedBand === idx ? '#8B5CF6' : 'transparent',
-                            color: selectedBand === idx ? '#fff' : '#64748B', fontWeight: '600',
+                            background: selectedBand === idx ? 'var(--text-primary)' : 'transparent',
+                            color: selectedBand === idx ? 'var(--bg-primary)' : '#64748B', fontWeight: '600',
                             transition: 'all 0.15s'
                         }}
                     >
@@ -82,8 +82,8 @@ export const AnalysisStage: React.FC = () => {
                 onClick={() => setSelectedBand(24)}
                 style={{
                     padding: '3px 8px', fontSize: '10px', border: 'none', borderRadius: '4px', cursor: 'pointer',
-                    background: selectedBand === 24 ? '#8B5CF6' : 'transparent',
-                    color: selectedBand === 24 ? '#fff' : '#64748B', fontWeight: '600',
+                    background: selectedBand === 24 ? 'var(--text-primary)' : 'transparent',
+                    color: selectedBand === 24 ? 'var(--bg-primary)' : '#64748B', fontWeight: '600',
                     transition: 'all 0.15s'
                 }}
             >
@@ -91,7 +91,7 @@ export const AnalysisStage: React.FC = () => {
             </button>
           </div>
 
-          <button className="button small" style={{ gap: '6px', borderColor: '#1A1F26' }}>
+          <button className="button small" style={{ gap: '6px', borderColor: 'var(--border-color)' }}>
               <Download size={12} /> Export
           </button>
 
@@ -106,10 +106,10 @@ export const AnalysisStage: React.FC = () => {
 
         {/* LEFT: Receiver list */}
         {!isSidebarCollapsed && (
-          <div style={{ width: '260px', background: '#05070A', borderRight: '1px solid #1A1F26', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-              <div style={{ padding: '12px 14px', borderBottom: '1px solid #1A1F26', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ width: '260px', background: 'var(--bg-secondary)', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+              <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <LayoutDashboard size={14} color="#8B5CF6" />
+                      <LayoutDashboard size={14} color="var(--text-primary)" />
                       <span style={{ fontWeight: '600', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94A3B8' }}>Receivers</span>
                       <span style={{ fontSize: '10px', color: '#475569' }}>({receivers.length})</span>
                   </div>
@@ -125,8 +125,8 @@ export const AnalysisStage: React.FC = () => {
                           onClick={() => setSelected(r.receiverId)}
                           style={{
                               padding: '10px 12px', borderRadius: '6px', cursor: 'pointer', marginBottom: '4px',
-                              background: selectedId === r.receiverId ? 'rgba(139, 92, 246, 0.08)' : 'transparent',
-                              border: `1px solid ${selectedId === r.receiverId ? 'rgba(139, 92, 246, 0.3)' : 'transparent'}`,
+                              background: selectedId === r.receiverId ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                              border: `1px solid ${selectedId === r.receiverId ? 'rgba(255, 255, 255, 0.3)' : 'transparent'}`,
                               transition: 'all 0.15s'
                           }}
                       >
@@ -134,8 +134,8 @@ export const AnalysisStage: React.FC = () => {
                               <span style={{ fontSize: '11px', fontWeight: '600', color: '#E2E8F0' }}>{r.receiverId}</span>
                               <div style={{
                                   padding: '2px 6px', borderRadius: '3px', fontSize: '9px', fontWeight: '700',
-                                  background: r.metrics.sti > 0.6 ? 'rgba(74, 222, 128, 0.12)' : 'rgba(251, 146, 60, 0.12)',
-                                  color: r.metrics.sti > 0.6 ? '#4ADE80' : '#FB923C'
+                                  background: r.metrics.sti > 0.6 ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                                  color: r.metrics.sti > 0.6 ? '#FFFFFF' : '#AAAAAA'
                               }}>
                                   {r.metrics.sti.toFixed(2)}
                               </div>
@@ -154,41 +154,41 @@ export const AnalysisStage: React.FC = () => {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
           {/* Viewport area — smaller, contextual */}
-          <div style={{ height: '35%', position: 'relative', background: '#000', borderBottom: '1px solid #1A1F26' }}>
+          <div style={{ height: '35%', position: 'relative', background: '#000', borderBottom: '1px solid var(--border-color)' }}>
               <Viewport />
           </div>
 
           {/* Analysis data panel */}
-          <div style={{ flex: 1, background: '#020408', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ flex: 1, background: 'var(--bg-primary)', position: 'relative', overflow: 'hidden' }}>
               <BottomPanel />
           </div>
         </div>
 
         {/* RIGHT: Metrics sidebar */}
-        <div style={{ width: '260px', background: '#05070A', borderLeft: '1px solid #1A1F26', display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto' }}>
+        <div style={{ width: '260px', background: 'var(--bg-secondary)', borderLeft: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', flexShrink: 0, overflowY: 'auto' }}>
 
             {/* Selected Receiver Metrics */}
-            <div style={{ padding: '14px', borderBottom: '1px solid #1A1F26' }}>
+            <div style={{ padding: '14px', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <h3 style={{ fontSize: '10px', color: '#8B5CF6', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0, fontWeight: '700' }}>
+                    <h3 style={{ fontSize: '10px', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0, fontWeight: '700' }}>
                         Metrics
                     </h3>
                     <div style={{
                         padding: '2px 6px', borderRadius: '3px', fontSize: '9px', fontWeight: '700',
-                        background: currentResult.metrics.sti > 0.6 ? 'rgba(74, 222, 128, 0.12)' : 'rgba(251, 146, 60, 0.12)',
-                        color: currentResult.metrics.sti > 0.6 ? '#4ADE80' : '#FB923C'
+                        background: currentResult.metrics.sti > 0.6 ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.05)',
+                        color: currentResult.metrics.sti > 0.6 ? '#FFFFFF' : '#AAAAAA'
                     }}>
                         STI {currentResult.metrics.sti.toFixed(2)}
                     </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                    <div style={{ padding: '8px', background: 'rgba(139, 92, 246, 0.06)', borderRadius: '6px', textAlign: 'center' }}>
+                    <div style={{ padding: '8px', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '6px', textAlign: 'center' }}>
                         <div style={{ fontSize: '18px', fontWeight: '700', color: '#F8FAFC' }}>
                             {currentResult.metrics.t30[selectedBand === 24 ? 13 : selectedBand].toFixed(2)}s
                         </div>
                         <div style={{ fontSize: '8px', color: '#64748B', marginTop: '2px' }}>T30</div>
                     </div>
-                    <div style={{ padding: '8px', background: 'rgba(139, 92, 246, 0.06)', borderRadius: '6px', textAlign: 'center' }}>
+                    <div style={{ padding: '8px', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '6px', textAlign: 'center' }}>
                         <div style={{ fontSize: '18px', fontWeight: '700', color: '#F8FAFC' }}>
                             {selectedBand === 24 ? currentResult.metrics.splA?.toFixed(1) : currentResult.metrics.spl[selectedBand].toFixed(1)}dB{selectedBand === 24 ? '(A)' : ''}
                         </div>
@@ -211,13 +211,13 @@ export const AnalysisStage: React.FC = () => {
 
             {/* Global averages */}
             {receivers.length > 1 && (
-              <div style={{ padding: '14px', borderBottom: '1px solid #1A1F26' }}>
+              <div style={{ padding: '14px', borderBottom: '1px solid var(--border-color)' }}>
                   <h3 style={{ fontSize: '10px', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px', fontWeight: '600' }}>
                       Averages ({receivers.length})
                   </h3>
                   <div style={{ display: 'flex', gap: '8px' }}>
                       <div style={{ flex: 1, padding: '8px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '14px', fontWeight: '700', color: '#8B5CF6' }}>
+                          <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-primary)' }}>
                               {(receivers.reduce((a, b) => a + b.metrics.sti, 0) / receivers.length).toFixed(2)}
                           </div>
                           <div style={{ fontSize: '8px', color: '#475569' }}>STI</div>
