@@ -69,17 +69,26 @@ self.onmessage = (e: MessageEvent) => {
        });
 
        const isGridPoint = recId.includes('_');
+       const isVolumetric = recId.startsWith('v_');
 
-       results.push({
-          receiverId: recId,
-          metrics,
-          // Only send rayPaths for non-grid points to keep UI clean
-          rayPaths: isGridPoint ? [] : ir.paths
-       });
+       if (isVolumetric) {
+         results.push({
+           receiverId: recId,
+           position: (receivers.find((r: any) => r.id === recId) as SceneObject).position,
+           metrics
+         });
+       } else {
+         results.push({
+            receiverId: recId,
+            metrics,
+            // Only send rayPaths for non-grid points to keep UI clean
+            rayPaths: isGridPoint ? [] : ir.paths
+         });
+       }
 
        // ONLY send raw impulse response for primary receivers (for auralization)
        // This is the main "crash preventer" for large grids
-       if (!isGridPoint) {
+       if (!isGridPoint && !isVolumetric) {
           rawIRs[recId] = ir;
        }
     });

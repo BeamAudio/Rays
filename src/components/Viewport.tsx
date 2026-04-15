@@ -10,7 +10,9 @@ import { OCTAVE_1_3_FREQS, OCTAVE_1_1_FREQS, MAP_1_3_TO_1_1 } from '../types';
 
 const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect: () => void; readOnly?: boolean }> = ({ obj, isSelected, onSelect, readOnly }) => {
   const meshRef = useRef<THREE.Mesh>(null);
-  const { updateObject, results, showHeatmap, selectedBand } = useProjectStore();
+  const { updateObject, results, showHeatmap, selectedBand, currentView } = useProjectStore();
+
+  const isAnalysis = currentView === 'ANALYSIS';
 
   const getMaterialProps = (mat?: { name?: string, category?: string }) => {
     if (!mat) return { color: "#ffffff", opacity: 0.4, roughness: 0.2, metalness: 0.5, transparent: true };
@@ -27,7 +29,7 @@ const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect
   };
 
   const handleTransform = () => {
-    if (meshRef.current) {
+    if (meshRef.current && !isAnalysis) {
       const { position, rotation, scale } = meshRef.current;
       const snap = (v: number) => Math.round(v * 2) / 2;
       const snappedPos: [number, number, number] = [snap(position.x), snap(position.y), snap(position.z)];
@@ -41,12 +43,12 @@ const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect
 
   const isPlane = obj.shape === 'plane' || obj.type === 'plane';
   const planeResults = isPlane ? results.filter(r => r.receiverId.startsWith(obj.id + '_')) : [];
-  const showPlaneResults = isPlane && planeResults.length > 0 && showHeatmap;
+  const showPlaneResults = isPlane && planeResults.length > 0 && showHeatmap && isAnalysis;
   const matProps = getMaterialProps(obj.material);
 
   return (
     <>
-      {isSelected && !readOnly && (
+      {isSelected && !readOnly && !isAnalysis && (
         <TransformControls object={meshRef.current || undefined} onObjectChange={handleTransform} />
       )}
 
@@ -60,7 +62,7 @@ const ObjectRenderer: React.FC<{ obj: SceneObject; isSelected: boolean; onSelect
           position={obj.position}
           rotation={obj.rotation}
           scale={obj.scale}
-          onClick={(e) => { if (!readOnly) { e.stopPropagation(); onSelect(); } }}
+          onClick={(e) => { if (!readOnly && !isAnalysis) { e.stopPropagation(); onSelect(); } }}
         >
           {obj.shape === 'box' ? <boxGeometry args={[1, 1, 1]} /> : 
            obj.shape === 'sphere' ? <sphereGeometry args={[obj.type === 'source' ? 0.1 : 0.3, 32, 32]} /> : 
@@ -172,19 +174,14 @@ const SceneContent: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
   const displayResult = selectedResult;
 
   const roomInfo = React.useMemo(() => {
-    // Only detect walls from the Room Wizard (they have shape === 'plane' and type === 'mesh')
-    // Exclude sources, receivers, analysis planes, and standalone boxes/spheres
-    const walls = objects.filter(o =>
-      o.type === 'mesh' && o.shape === 'plane' && o.name.includes('_')
-    );
-    if (walls.length === 0) return null;
+    const meshes = objects.filter(o => o.type === 'mesh');
+    if (meshes.length === 0) return null;
 
-    // Use the actual wall triangle positions for accurate room bounds
     let minX = Infinity, minY = Infinity, minZ = Infinity;
     let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
-    walls.forEach(w => {
-      if (w.triangles) {
+    meshes.forEach(w => {
+      if (w.triangles && w.triangles.length > 0) {
         for (let i = 0; i < w.triangles.length; i += 3) {
           minX = Math.min(minX, w.triangles[i]);
           minY = Math.min(minY, w.triangles[i + 1]);
@@ -193,8 +190,21 @@ const SceneContent: React.FC<{ readOnly?: boolean }> = ({ readOnly }) => {
           maxY = Math.max(maxY, w.triangles[i + 1]);
           maxZ = Math.max(maxZ, w.triangles[i + 2]);
         }
+      } else {
+        // Fallback to position and scale for primitives
+        const sx = w.scale[0] / 2;
+        const sy = w.scale[1] / 2;
+        const sz = w.scale[2] / 2;
+        minX = Math.min(minX, w.position[0] - sx);
+        minY = Math.min(minY, w.position[1] - sy);
+        minZ = Math.min(minZ, w.position[2] - sz);
+        maxX = Math.max(maxX, w.position[0] + sx);
+        maxY = Math.max(maxY, w.position[1] + sy);
+        maxZ = Math.max(maxZ, w.position[2] + sz);
       }
     });
+
+    if (!isFinite(minX)) return null;
 
     const dims = { L: Math.max(0.1, maxX - minX), H: Math.max(0.1, maxY - minY), W: Math.max(0.1, maxZ - minZ) };
     return { dims, center: new THREE.Vector3((minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2), modes: calculateRoomModes(dims, 150) };

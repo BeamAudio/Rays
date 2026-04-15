@@ -64,6 +64,12 @@ export interface SceneObject {
   solo?: boolean;
 }
 
+export interface VolumetricResult {
+  receiverId: string;
+  position: [number, number, number];
+  metrics: AcousticMetrics;
+}
+
 export interface AcousticMetrics {
   t30: number[]; // Per octave
   c80: number[];
@@ -75,12 +81,11 @@ export interface AcousticMetrics {
   arrivals?: { time: number; energy: number[]; order: number }[];
   energyGrid?: number[][]; // [binIdx][octaveIdx] for dynamic filtering
 }
-
 export interface SimulationResult {
   receiverId: string;
   metrics: AcousticMetrics;
   rayPaths?: { points: [number, number, number][], energy: number, time: number, order: number }[];
-  position?: [number, number, number];
+  receiverPos?: [number, number, number];
 }
 
 export interface EnvironmentSettings {

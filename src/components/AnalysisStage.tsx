@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useProjectStore } from '../state/project_state';
+import { generatePDFReport } from '../engine/report_generator';
 import { Viewport } from './Viewport';
 import { BottomPanel } from './BottomPanel';
 import {
@@ -8,12 +9,19 @@ import {
   Target,
   BarChart3,
   Download,
-  Maximize2
+  Maximize2,
+  FileText
 } from 'lucide-react';
 
 export const AnalysisStage: React.FC = () => {
   const { results, setCurrentView, selectedId, setSelected, selectedBand, setSelectedBand } = useProjectStore();
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const handleDownloadReport = () => {
+    if (currentResult) {
+      generatePDFReport(currentResult.metrics, 'Acoustic Consultancy Report');
+    }
+  };
 
   const receivers = useMemo(() => results.filter(r => !r.receiverId.includes('_')), [results]);
 
@@ -90,6 +98,10 @@ export const AnalysisStage: React.FC = () => {
                 BB
             </button>
           </div>
+
+          <button className="button small" onClick={handleDownloadReport} style={{ gap: '6px', borderColor: 'var(--border-color)' }}>
+              <FileText size={12} /> Download PDF Report
+          </button>
 
           <button className="button small" style={{ gap: '6px', borderColor: 'var(--border-color)' }}>
               <Download size={12} /> Export

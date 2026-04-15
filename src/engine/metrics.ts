@@ -1,7 +1,43 @@
 import type { ImpulseResponse, AcousticMetrics } from '../types';
 import { A_WEIGHTING_1_3 } from '../types';
 
-export function calculateMetrics(ir: ImpulseResponse, ambientNoiseSPL: number[] = Array(24).fill(30)): AcousticMetrics {
+
+export function calculateDistanceDecayMetrics(
+  distances: number[],
+  stis: number[]
+): { rD: number; rP: number; STI_0: number; DL2: number } {
+  // STI decay: STI(r) = STI_0 - a * log10(r/r0)
+  // Simplified linear regression on semi-log scale
+  const x = distances.map(d => Math.log10(d));
+  const y = stis;
+  
+  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+  const n = distances.length;
+  for (let i = 0; i < n; i++) {
+    sumX += x[i];
+    sumY += y[i];
+    sumXY += x[i] * y[i];
+    sumXX += x[i] * x[i];
+  }
+  
+  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+  
+  // rD (Distraction distance): Distance where STI = 0.6
+  const rD = Math.pow(10, (0.6 - intercept) / slope);
+  
+  // rP (Privacy distance): Distance where STI = 0.2
+  const rP = Math.pow(10, (0.2 - intercept) / slope);
+  
+  return {
+    rD: isNaN(rD) ? 0 : rD,
+    rP: isNaN(rP) ? 0 : rP,
+    STI_0: intercept,
+    DL2: -slope
+  };
+}
+
+export function calculateMetrics(ir: ImpulseResponse, ambientNoiseSPL: number[] = Array(24).fill(40)): AcousticMetrics {
   const numOctaves = 24;
   const metrics: AcousticMetrics = {
     t30: Array(numOctaves).fill(0),

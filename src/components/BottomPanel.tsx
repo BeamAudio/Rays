@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '../state/project_state';
-import { Play, Pause, BarChart2, Activity, Waves, FileText } from 'lucide-react';
+import { Play, Pause, BarChart2, Activity, Waves, FileText, LayoutTemplate } from 'lucide-react';
 import { auralizer } from '../engine/auralizer';
+import { DistanceDecayPlot } from './DistanceDecayPlot';
+import { calculateDistanceDecayMetrics } from '../engine/metrics';
 
-type Tab = 'summary' | 'signal' | 'distribution';
+type Tab = 'summary' | 'signal' | 'distribution' | 'office';
 
 const TabButton: React.FC<{ active: boolean, onClick: () => void, icon: React.ReactNode, label: string }> = ({ active, onClick, icon, label }) => (
     <button 
@@ -148,6 +150,7 @@ export const BottomPanel: React.FC = () => {
                 <TabButton active={activeTab === 'summary'} onClick={() => setActiveTab('summary')} icon={<BarChart2 size={14}/>} label="Executive Summary" />
                 <TabButton active={activeTab === 'signal'} onClick={() => setActiveTab('signal')} icon={<Activity size={14}/>} label="Signal Analysis (ETC)" />
                 <TabButton active={activeTab === 'distribution'} onClick={() => setActiveTab('distribution')} icon={<Waves size={14}/>} label="Octave Distribution" />
+                <TabButton active={activeTab === 'office'} onClick={() => setActiveTab('office')} icon={<LayoutTemplate size={14}/>} label="ISO 3382-3 (Office)" />
             </div>
             <div style={{ display: 'flex', gap: '10px', paddingRight: '15px' }}>
                 <button className="button small primary" onClick={handleExportCSV}><FileText size={12}/> Generate Consultancy Report</button>
@@ -202,6 +205,26 @@ export const BottomPanel: React.FC = () => {
                                 });
                             })()}
                          </div>
+                    </div>
+                )}
+
+                {activeTab === 'office' && (
+                    <div style={{ padding: '20px' }}>
+                        {(() => {
+                            const officeData = results.map(r => ({ distance: r.receiverPos ? Math.sqrt(r.receiverPos[0]**2 + r.receiverPos[2]**2) : 1, sti: r.metrics.sti }));
+                            const metrics = calculateDistanceDecayMetrics(officeData.map(d => d.distance), officeData.map(d => d.sti));
+                            return (
+                                <>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '20px' }}>
+                                        <MetricCard label="rD (Distraction)" value={metrics.rD.toFixed(1)} unit="m" status={metrics.rD < 10 ? 'Poor' : 'Good'} />
+                                        <MetricCard label="rP (Privacy)" value={metrics.rP.toFixed(1)} unit="m" status={metrics.rP < 16 ? 'Poor' : 'Good'} />
+                                        <MetricCard label="STI_0" value={metrics.STI_0.toFixed(2)} unit="" status="Nominal" />
+                                        <MetricCard label="DL2 (Decay)" value={metrics.DL2.toFixed(2)} unit="dB/log10(r)" status="Active" />
+                                    </div>
+                                    <DistanceDecayPlot data={officeData} rD={metrics.rD} rP={metrics.rP} />
+                                </>
+                            );
+                        })()}
                     </div>
                 )}
             </div>
