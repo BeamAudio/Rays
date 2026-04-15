@@ -17,7 +17,7 @@ export const Marketplace: React.FC = () => {
     // Fetch from static 'cloud' manifest
     const fetchMarketplace = async () => {
       try {
-        const response = await fetch(`${import.meta.env.BASE_URL}marketplace.json`);
+        const response = await fetch(`${import.meta.env.BASE_URL}data/marketplace.json`);
         const data = await response.json();
         
         // Map simplified JSON to full patterns if needed or just use as-is
