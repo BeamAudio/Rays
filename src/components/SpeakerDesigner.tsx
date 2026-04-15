@@ -256,18 +256,27 @@ export const SpeakerDesigner: React.FC = () => {
         </div>
 
         {/* BOTTOM: Spectral signature readout */}
-        <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '20px', height: '100px', background: 'rgba(0,0,0,0.5)', borderRadius: '12px', padding: '15px', backdropFilter: 'blur(10px)', border: '1px solid var(--border-color)' }}>
-           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <h4 style={{ fontSize: '9px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Spectral Signature (On-Axis SPL)</h4>
-              <Activity size={12} color="var(--accent-primary)" />
-           </div>
-           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '40px' }}>
-              {Array.from({ length: 24 }).map((_, i) => (
-                <div key={i} style={{ flex: 1, background: 'var(--accent-primary)', height: `${60 + Math.random() * 40}%`, opacity: 0.8, borderRadius: '2px' }} />
-              ))}
-           </div>
-        </div>
-      </div>
+        <div style={{ position: 'absolute', bottom: '20px', left: '20px', right: '20px', height: '140px', background: 'rgba(0,0,0,0.5)', borderRadius: '12px', padding: '15px', backdropFilter: 'blur(10px)', border: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <h4 style={{ fontSize: '9px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>On-Axis SPL</h4>
+                <Activity size={12} color="var(--accent-primary)" />
+            </div>
+            <div style={{ height: '80px', display: 'flex', alignItems: 'flex-end', gap: '2px', position: 'relative', borderBottom: '1px solid var(--border-color)', borderLeft: '1px solid var(--border-color)' }}>
+              {/* Y-Axis labels */}
+              <div style={{ position: 'absolute', top: 0, left: '-25px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '8px', color: 'var(--text-secondary)' }}>
+                <span>110</span><span>95</span><span>80</span><span>65</span>
+              </div>
+              {/* Bars */}
+              {OCTAVE_1_3_FREQS.map((f, i) => {
+                const spl = 100 + 10 * Math.log10(f / 1000) - (f > 8000 ? 10 : 0);
+                return <div key={i} style={{ flex: 1, background: 'var(--accent-primary)', height: `${((spl - 60) / 50) * 100}%`, opacity: 0.8, borderRadius: '1px' }} />;
+              })}
+              {/* X-Axis labels */}
+              <div style={{ position: 'absolute', bottom: '-15px', width: '100%', display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: 'var(--text-secondary)' }}>
+                {OCTAVE_1_3_FREQS.filter((_, i) => i % 6 === 0).map(f => <span key={f}>{f/1000}k</span>)}
+              </div>
+            </div>
+        </div>      </div>
     </div>
   );
 };
