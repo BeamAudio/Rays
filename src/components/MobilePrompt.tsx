@@ -5,20 +5,16 @@ export const MobilePrompt: React.FC = () => {
   const [isPortrait, setIsPortrait] = useState(false);
 
   useEffect(() => {
-    const checkOrientation = () => {
-      // Check if it's a touch device (likely mobile) and in portrait
-      const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-      setIsPortrait(isMobile && window.innerHeight > window.innerWidth);
+    const check = () => {
+      // More robust mobile/orientation detection
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isPortrait = window.innerHeight > window.innerWidth;
+      setIsPortrait(isTouchDevice && isPortrait);
     };
 
-    checkOrientation();
-    window.addEventListener('resize', checkOrientation);
-    window.addEventListener('orientationchange', checkOrientation);
-    
-    return () => {
-      window.removeEventListener('resize', checkOrientation);
-      window.removeEventListener('orientationchange', checkOrientation);
-    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
   if (!isPortrait) return null;

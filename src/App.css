@@ -8,9 +8,23 @@
   overflow: hidden;
 }
 
-@media (max-width: 800px) {
-  .right-panel {
+@media (max-width: 900px) {
+  .left-panel, .right-panel {
     display: none !important;
+  }
+  .main-content {
+    flex-direction: column;
+  }
+  .viewport-container {
+    width: 100vw;
+    height: 100vh;
+  }
+  .topbar {
+    height: 40px;
+    padding: 0 5px;
+  }
+  .logo {
+    font-size: 12px;
   }
 }
 
