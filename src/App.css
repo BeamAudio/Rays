@@ -9,7 +9,7 @@
 }
 
 @media (max-width: 800px) {
-  .left-panel, .right-panel {
+  .right-panel {
     display: none !important;
   }
 }
