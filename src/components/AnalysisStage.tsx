@@ -19,7 +19,7 @@ export const AnalysisStage: React.FC = () => {
 
   const handleDownloadReport = () => {
     if (currentResult) {
-      generatePDFReport(currentResult.metrics, 'Acoustic Consultancy Report');
+      generatePDFReport(currentResult.metrics, 'Acoustic Simulation Report');
     }
   };
 

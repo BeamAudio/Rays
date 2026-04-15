@@ -4,6 +4,7 @@ import { Play, Pause, BarChart2, Activity, Waves, FileText, LayoutTemplate } fro
 import { auralizer } from '../engine/auralizer';
 import { DistanceDecayPlot } from './DistanceDecayPlot';
 import { calculateDistanceDecayMetrics } from '../engine/metrics';
+import { OCTAVE_1_3_FREQS, OCTAVE_1_1_FREQS, MAP_1_3_TO_1_1 } from '../types';
 
 type Tab = 'summary' | 'signal' | 'distribution' | 'office';
 
@@ -34,20 +35,16 @@ const MetricCard: React.FC<{ label: string, value: string, unit: string, status:
     </div>
 );
 
-const getOctaveFreq = (i: number) => {
-  const freqs = [50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000];
-  const f = freqs[i];
-  return f >= 1000 ? `${f/1000}k` : f;
-};
-
 export const BottomPanel: React.FC = () => {
   const { 
     results, selectedId,
     currentTime, setCurrentTime,
     auralizationSettings, setAuralization,
-    selectedBand, setSelectedBand
+    selectedBand, setSelectedBand, bandMode
   } = useProjectStore();
   
+  // Use bandMode to influence octave distribution logic
+  const activeBandMode = bandMode;
   const [activeTab, setActiveTab] = useState<Tab>('summary');
   const scrubberRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -153,7 +150,7 @@ export const BottomPanel: React.FC = () => {
                 <TabButton active={activeTab === 'office'} onClick={() => setActiveTab('office')} icon={<LayoutTemplate size={14}/>} label="ISO 3382-3 (Office)" />
             </div>
             <div style={{ display: 'flex', gap: '10px', paddingRight: '15px' }}>
-                <button className="button small primary" onClick={handleExportCSV}><FileText size={12}/> Generate Consultancy Report</button>
+                <button className="button small primary" onClick={handleExportCSV}><FileText size={12}/> Export Data</button>
             </div>
         </div>
 
@@ -182,22 +179,28 @@ export const BottomPanel: React.FC = () => {
                     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                          <div style={{ flex: 1, display: 'flex', gap: '2px', alignItems: 'flex-end', paddingBottom: '30px' }}>
                             {(() => {
-                                const validSpls = selectedResult.metrics.spl.filter((s: number) => isFinite(s) && s > -100);
+                                const displayFreqs = activeBandMode === '1/3' ? OCTAVE_1_3_FREQS : OCTAVE_1_1_FREQS;
+                                const mappedSpls = displayFreqs.map((_, i) => {
+                                  const bandIdx = activeBandMode === '1' ? MAP_1_3_TO_1_1[i].subIndices[1] : i;
+                                  return selectedResult.metrics.spl[bandIdx];
+                                });
+                                const validSpls = mappedSpls.filter((s: number) => isFinite(s) && s > -100);
                                 if (validSpls.length === 0) return <div style={{ padding: '20px', color: '#64748B' }}>No data</div>;
                                 const minS = Math.min(...validSpls);
                                 const maxS = Math.max(...validSpls);
                                 const range = maxS - minS || 1;
-                                return selectedResult.metrics.spl.map((s: number, i: number) => {
+                                return mappedSpls.map((s: number, i: number) => {
+                                    const actualBandIdx = activeBandMode === '1' ? MAP_1_3_TO_1_1[i].subIndices[1] : i;
                                     const height = isFinite(s) && s > -100 ? Math.max(5, ((s - minS) / range) * 100) : 2;
                                     return (
                                         <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end', position: 'relative' }}>
                                             <div
-                                                onClick={() => setSelectedBand(i)}
-                                                style={{ width: '100%', height: `${height}%`, background: i === (selectedBand === 24 ? 13 : selectedBand) ? '#00E5FF' : '#1A1F26', borderRadius: '2px 2px 0 0', cursor: 'pointer', transition: 'all 0.15s' }}
+                                                onClick={() => setSelectedBand(actualBandIdx)}
+                                                style={{ width: '100%', height: `${height}%`, background: actualBandIdx === (selectedBand === 24 ? 13 : selectedBand) ? '#FFFFFF' : 'var(--bg-tertiary)', borderRadius: '2px 2px 0 0', cursor: 'pointer', transition: 'all 0.15s' }}
                                             />
-                                            {i % 3 === 0 && (
+                                            {(activeBandMode === '1' || i % 3 === 0) && (
                                                 <span style={{ position: 'absolute', bottom: '-20px', left: '50%', transform: 'translateX(-50%)', fontSize: '7px', color: '#64748B', whiteSpace: 'nowrap' }}>
-                                                    {getOctaveFreq(i)}
+                                                    {displayFreqs[i] >= 1000 ? `${displayFreqs[i]/1000}k` : displayFreqs[i]}
                                                 </span>
                                             )}
                                         </div>

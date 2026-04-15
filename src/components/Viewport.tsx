@@ -364,10 +364,9 @@ export const Viewport: React.FC = () => {
                 pointerEvents: 'none', zIndex: 200
               }}>
                 <div style={{ fontSize: '9px', color: 'var(--accent-primary)', fontWeight: 'bold' }}>Broadband (A-Weighted)</div>
-                <div style={{ fontSize: '9px', color: '#E2E8F0' }}>Consultancy standard summation</div>
+                <div style={{ fontSize: '9px', color: '#E2E8F0' }}>Standard summation</div>
               </div>
-            )}
-          </div>
+            )}          </div>
 
           <button 
             onClick={toggleBandMode}
