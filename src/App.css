@@ -9,13 +9,22 @@
 }
 
 @media (max-width: 900px) {
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+  }
+  .app-container {
+    width: 100vw;
+    overflow-x: hidden;
+  }
   .left-panel, .right-panel {
     position: fixed;
     top: 50px;
     height: calc(100vh - 50px);
+    width: 260px;
     z-index: 100;
     box-shadow: 0 0 20px rgba(0,0,0,0.5);
-    /* Prevent overflow issues */
     overflow-y: auto;
     overscroll-behavior: contain;
   }
@@ -24,13 +33,6 @@
   
   .right-panel { right: -260px; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
   .right-panel.active { right: 0; }
-
-  .main-content {
-    flex-direction: row;
-    width: 100vw;
-    /* Ensure the main container doesn't force a horizontal scrollbar */
-    overflow-x: hidden;
-  }
 }
 
 .topbar {
