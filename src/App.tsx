@@ -25,9 +25,8 @@ const StartScreen: React.FC<{ onStart: (fullscreen: boolean) => void }> = ({ onS
           BEAM <span style={{ color: 'var(--accent-primary)' }}>AUDIO</span> RAYS
         </h1>
         <p style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '4px' }}>
-          Consultancy Grade Acoustic Simulation
-        </p>
-      </div>
+        Acoustic Simulation
+        </p>      </div>
 
       <div style={{ display: 'flex', gap: '16px' }}>
         <button 
