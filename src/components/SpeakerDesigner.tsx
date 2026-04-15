@@ -6,6 +6,7 @@ import { Save, PenTool, Activity, Share2, Code, Download } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { BalloonVisualizer } from './BalloonVisualizer';
 import { NumericInput } from './NumericInput';
+import { OCTAVE_1_3_FREQS } from '../types';
 
 export const SpeakerDesigner: React.FC = () => {
   const { installModel, setCurrentView } = useProjectStore();
@@ -267,13 +268,13 @@ export const SpeakerDesigner: React.FC = () => {
                 <span>110</span><span>95</span><span>80</span><span>65</span>
               </div>
               {/* Bars */}
-              {OCTAVE_1_3_FREQS.map((f, i) => {
+              {OCTAVE_1_3_FREQS.map((f: number, i: number) => {
                 const spl = 100 + 10 * Math.log10(f / 1000) - (f > 8000 ? 10 : 0);
                 return <div key={i} style={{ flex: 1, background: 'var(--accent-primary)', height: `${((spl - 60) / 50) * 100}%`, opacity: 0.8, borderRadius: '1px' }} />;
               })}
               {/* X-Axis labels */}
               <div style={{ position: 'absolute', bottom: '-15px', width: '100%', display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: 'var(--text-secondary)' }}>
-                {OCTAVE_1_3_FREQS.filter((_, i) => i % 6 === 0).map(f => <span key={f}>{f/1000}k</span>)}
+                {OCTAVE_1_3_FREQS.filter((_: number, i: number) => i % 6 === 0).map((f: number) => <span key={f}>{f/1000}k</span>)}
               </div>
             </div>
         </div>      </div>
