@@ -291,10 +291,10 @@ export const Topbar: React.FC = () => {
           className="button primary"
           onClick={handleRunSimulation}
           disabled={isSimulating}
-          style={{ padding: '6px 16px', fontSize: '11px', marginLeft: '4px', borderRadius: '40px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}
+          style={{ padding: '6px 12px', fontSize: '11px', marginLeft: '4px', borderRadius: '40px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}
         >
           {isSimulating ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} fill="currentColor" />}
-          {isSimulating ? `${simulationProgress}%` : 'Compute'}
+          {isSimulating ? `${simulationProgress}%` : (window.innerWidth > 600 ? 'Compute' : 'Run')}
         </button>
       </div>
     </div>
