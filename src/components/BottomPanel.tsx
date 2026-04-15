@@ -238,7 +238,7 @@ export const BottomPanel: React.FC = () => {
                     }} style={{ width: '45px', height: '45px', borderRadius: '50%', border: 'none', background: '#FFFFFF', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                         {auralizationSettings.isPlaying ? <Pause size={24} fill="#000" /> : <Play size={24} fill="#000" />}
                     </button>
-                    <div><div style={{ fontSize: '12px', fontWeight: 'bold' }}>Live Convolution</div><div style={{ fontSize: '9px', color: '#FFFFFF' }}>STOCHASTIC SYNTHESIS</div></div>
+                    <div><div style={{ fontSize: '12px', fontWeight: 'bold' }}>Convolution</div><div style={{ fontSize: '9px', color: '#FFFFFF' }}>Audio Processing</div></div>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>

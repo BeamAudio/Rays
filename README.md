@@ -1,42 +1,37 @@
-# Beam Audio Rays
+# Rays
 
-**Consultancy-Grade Acoustic Simulation Engine**
+**Acoustic Raytracing Engine**
 
-Rays is a modern, high-performance acoustic raytracing and room simulation tool built for acoustic consultants and electro-acoustic engineers. It provides interactive, browser-based 3D modeling and computes standard ISO 3382 metrics, energy heatmaps, and Speech Transmission Index (STI) using stochastic raytracing algorithms.
+Rays is a lightweight, high-performance acoustic simulation engine designed for rapid space analysis and acoustic modeling directly in the browser.
 
-## Features
+## Core Features
 
-- **Geometric Acoustics:** Fast stochastic raytracing engine with parallelized Web Workers.
-- **Consultancy Standards:** Full support for 1/1 and 1/3 octave bands, A-weighted broadband summations, and standard metrics (T30, C80, D50, STI).
-- **Material Library:** Assign frequency-dependent absorption, scattering, and transmission to any surface.
-- **Directivity Models:** Import and utilize complex speaker directivity patterns (Omni, Cardioid, Horns).
-- **Auralization:** Real-time convolution reverb of impulse responses against dry anechoic samples.
-- **Persistent Workspace:** Entire project states and simulation results are seamlessly stored locally via `zustand/persist`, ensuring your data survives page reloads even on static hosts like GitHub Pages.
-- **Analysis Overlays:** Volumetric room mode estimation (now based on arbitrary scene bounds), energy heatmaps, and individual reflection visualization.
+- **Raytracing Engine:** Efficient stochastic raytracing via GPU-accelerated Web Workers.
+- **Spectrum Analysis:** Support for both 1/1 and 1/3 octave band analysis.
+- **Data Visualization:** Interactive 3D volumetric heatmaps and detailed energy-time curves (ETC).
+- **Auralization:** Real-time convolution reverb processing for listening tests.
+- **Office Metrics:** Automatic calculation of speech transmission and decay characteristics for open-plan environments.
+- **Persistent Storage:** Project data, simulation results, and custom settings survive browser refreshes.
 
 ## Getting Started
 
-Visit the live deployment or run locally:
+### Local Development
 
-```bash
-npm install
-npm run dev
-```
+1. Clone the repository: `git clone https://github.com/BeamAudio/Rays.git`
+2. Install dependencies: `npm install`
+3. Run the development environment: `npm run dev`
 
-### Quick Workflow
-1. **Workspace Mode:** Construct a basic shoebox room using the "Room Wizard" in the left panel, or import an existing `.gltf` CAD file.
-2. **Add Components:** Spawn acoustic sources and receivers into your scene. 
-3. **Set Properties:** Select individual walls or speakers to edit their acoustic materials and directivity patterns via the right-side Inspector.
-4. **Compute:** Hit "Compute" in the top bar. The application will trace up to 100,000 rays to determine the impulse response.
-5. **Analysis Mode:** Once computed, switch to Analysis Mode to view detailed T30 decay curves, STI distributions, and A-weighted Heatmaps across your measurement planes.
+### Project Workflow
+1. **Scene Builder:** Use the integrated Room Wizard or import CAD meshes (GLTF/GLB) to define your space.
+2. **Setup:** Place acoustic sources and receivers within the viewport.
+3. **Materials:** Assign frequency-dependent absorption and diffusion properties to surfaces.
+4. **Compute:** Run the raytracer to generate the acoustic response.
+5. **Analyze:** Inspect results in the Analysis view, including heatmaps, decay plots, and frequency distribution data.
+6. **Export:** Export raw results for external processing or download a summary report.
 
-## Development Stack
+## Contributing
 
-- React + TypeScript + Vite
-- Zustand (State Management + LocalStorage Persistence)
-- Three.js / React Three Fiber (3D Visualization)
-- Lucide React (Icons)
-- League Spartan (Typography)
+We encourage open contributions! If you have developed a custom speaker profile, please submit it to our marketplace. See [CONTRIBUTING.md](CONTRIBUTING.md) for submission details.
 
 ## License
 

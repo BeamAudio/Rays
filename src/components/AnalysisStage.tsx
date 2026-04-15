@@ -57,7 +57,7 @@ export const AnalysisStage: React.FC = () => {
           {/* Mode badge */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.12)', padding: '4px 12px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.25)' }}>
             <BarChart3 size={14} color="var(--text-primary)" />
-            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Analysis</span>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Simulation Data</span>
           </div>
           {/* Receiver selector breadcrumb */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#64748B' }}>
