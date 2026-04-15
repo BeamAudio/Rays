@@ -45,10 +45,6 @@ const StartScreen: React.FC<{ onStart: (fullscreen: boolean) => void }> = ({ onS
           <Play size={20} /> START WORKSPACE
         </button>
       </div>
-
-      <div style={{ position: 'absolute', bottom: '40px', fontSize: '10px', color: '#475569', maxWidth: '400px', lineHeight: '1.6' }}>
-        Professional tool for acoustic consultancy. Standard octave band analysis (ISO 3382), STI calculation (IEC 60268-16), and A-weighted broadband results.
-      </div>
     </div>
   );
 };
