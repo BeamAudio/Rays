@@ -180,7 +180,6 @@ export const useProjectStore = create<ProjectState>()(
         showRays: state.showRays,
         showHeatmap: state.showHeatmap,
         maxVisibleBounces: state.maxVisibleBounces,
-        results: state.results,
         hasSeenTutorial: state.hasSeenTutorial
       }),
       onRehydrateStorage: () => (state, error) => {
