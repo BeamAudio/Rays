@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { 
   Play, Save, Loader2, FolderOpen, Layout, PenTool, 
-  Activity, Camera, Box, Layers, Zap, Globe
+  Activity, Camera, Layers, Zap, Globe, RotateCw
 } from 'lucide-react';
 import { useProjectStore } from '../state/project_state';
 import * as THREE from 'three';
@@ -13,7 +13,8 @@ export const Topbar: React.FC = () => {
     objects, setSimulating, setSimulationResults,
     isSimulating, simulationProgress, environmentSettings,
     currentView, setCurrentView, toggleAnalysis,
-    viewMode, setViewMode, showRays, showHeatmap, showRoomModes, setVisualizationOptions
+    viewMode, setViewMode, showRays, showHeatmap, showRoomModes, setVisualizationOptions,
+    selectedModeIdx
   } = useProjectStore();
 
   const loadRef = useRef<HTMLInputElement>(null);
@@ -258,14 +259,15 @@ export const Topbar: React.FC = () => {
               <Layers size={14} /> <span style={{ display: window.innerWidth > 1000 ? 'inline' : 'none' }}>Heatmap</span>
             </button>
 
-            <button 
-              style={toggleButtonStyle(showRoomModes)} 
-              onClick={() => setVisualizationOptions({ showRoomModes: !showRoomModes })}
-              title="Toggle Room Modes"
-            >
-              <Box size={14} /> <span style={{ display: window.innerWidth > 1000 ? 'inline' : 'none' }}>Modes</span>
-            </button>
-          </>
+            {showRoomModes && (
+              <button 
+                style={toggleButtonStyle(false)} 
+                onClick={() => setVisualizationOptions({ selectedModeIdx: (selectedModeIdx + 1) % 10 })}
+                title="Cycle Room Modes"
+              >
+                <RotateCw size={14} /> <span style={{ display: window.innerWidth > 1000 ? 'inline' : 'none' }}>Next</span>
+              </button>
+            )}          </>
         )}
       </div>
 

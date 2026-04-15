@@ -97,10 +97,20 @@ export const BottomPanel: React.FC = () => {
             const px = ((timeMs - etcView.x) / etcView.w) * width;
             const db = 10 * Math.log10(arrival.energy[bandIdx] / maxVal + 1e-12);
             const py = yToPx(-db);
+            
+            // Highlight early arrivals (first 50ms) with higher weight
+            const isEarly = arrival.time < 0.05;
+            
             ctx.beginPath();
-            ctx.strokeStyle = arrival.order === 0 ? "#ffffff" : arrival.order === 1 ? "#cccccc" : "#999999";
-            ctx.lineWidth = arrival.order <= 1 ? 2 : 1;
+            ctx.strokeStyle = arrival.order === 0 ? "#ffffff" : isEarly ? "#cccccc" : "#666666";
+            ctx.lineWidth = isEarly ? 2 : 1;
             ctx.moveTo(px, height); ctx.lineTo(px, py); ctx.stroke();
+
+            // Label early reflection SPL
+            if (isEarly && Math.abs(db) < 60) {
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillText(`${(10 * Math.log10(arrival.energy[bandIdx] + 1e-12)).toFixed(0)}dB`, px + 2, py - 5);
+            }
         });
     }
 
