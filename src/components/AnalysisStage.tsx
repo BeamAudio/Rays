@@ -196,25 +196,25 @@ export const AnalysisStage: React.FC = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                     <div style={{ padding: '8px', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '6px', textAlign: 'center' }}>
                         <div style={{ fontSize: '18px', fontWeight: '700', color: '#F8FAFC' }}>
-                            {currentResult.metrics.t30[selectedBand === 24 ? 13 : selectedBand].toFixed(2)}s
+                            {currentResult.metrics.t30 ? currentResult.metrics.t30[selectedBand === 24 ? 13 : selectedBand]?.toFixed(2) : '0.00'}s
                         </div>
                         <div style={{ fontSize: '8px', color: '#64748B', marginTop: '2px' }}>T30</div>
                     </div>
                     <div style={{ padding: '8px', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '6px', textAlign: 'center' }}>
                         <div style={{ fontSize: '18px', fontWeight: '700', color: '#F8FAFC' }}>
-                            {selectedBand === 24 ? currentResult.metrics.splA?.toFixed(1) : currentResult.metrics.spl[selectedBand].toFixed(1)}dB{selectedBand === 24 ? '(A)' : ''}
+                            {selectedBand === 24 ? currentResult.metrics.splA?.toFixed(1) : (currentResult.metrics.spl ? currentResult.metrics.spl[selectedBand]?.toFixed(1) : '0.0')}dB{selectedBand === 24 ? '(A)' : ''}
                         </div>
                         <div style={{ fontSize: '8px', color: '#64748B', marginTop: '2px' }}>SPL</div>
                     </div>
                     <div style={{ padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', textAlign: 'center' }}>
                         <div style={{ fontSize: '18px', fontWeight: '700', color: '#F8FAFC' }}>
-                            {currentResult.metrics.c80[selectedBand === 24 ? 13 : selectedBand].toFixed(1)}dB
+                            {currentResult.metrics.c80 ? currentResult.metrics.c80[selectedBand === 24 ? 13 : selectedBand]?.toFixed(1) : '0.0'}dB
                         </div>
                         <div style={{ fontSize: '8px', color: '#64748B', marginTop: '2px' }}>C80</div>
                     </div>
                     <div style={{ padding: '8px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', textAlign: 'center' }}>
                         <div style={{ fontSize: '18px', fontWeight: '700', color: '#F8FAFC' }}>
-                            {(currentResult.metrics.d50[selectedBand === 24 ? 13 : selectedBand] * 100).toFixed(0)}%
+                            {currentResult.metrics.d50 ? (currentResult.metrics.d50[selectedBand === 24 ? 13 : selectedBand] * 100)?.toFixed(0) : '0'}%
                         </div>
                         <div style={{ fontSize: '8px', color: '#64748B', marginTop: '2px' }}>D50</div>
                     </div>
