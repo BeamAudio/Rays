@@ -14,17 +14,22 @@
     top: 50px;
     height: calc(100vh - 50px);
     z-index: 100;
-    box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    /* Prevent overflow issues */
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
-  .left-panel { left: -260px; transition: left 0.3s; }
+  .left-panel { left: -260px; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
   .left-panel.active { left: 0; }
   
-  .right-panel { right: -260px; transition: right 0.3s; }
+  .right-panel { right: -260px; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
   .right-panel.active { right: 0; }
 
   .main-content {
     flex-direction: row;
     width: 100vw;
+    /* Ensure the main container doesn't force a horizontal scrollbar */
+    overflow-x: hidden;
   }
 }
 
