@@ -8,6 +8,7 @@ import { Marketplace } from './components/Marketplace';
 import { SpeakerDesigner } from './components/SpeakerDesigner';
 import { AnalysisStage } from './components/AnalysisStage';
 import { Tutorial } from './components/Tutorial';
+import { MobilePrompt } from './components/MobilePrompt';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useProjectStore } from './state/project_state';
 import { Maximize2, Play } from 'lucide-react';
@@ -91,6 +92,7 @@ function App() {
 
   return (
     <div className="app-container">
+      <MobilePrompt />
       {!hasStarted ? (
         <StartScreen onStart={handleStart} />
       ) : (
@@ -147,4 +149,3 @@ function App() {
 }
 
 export default App;
- App;
