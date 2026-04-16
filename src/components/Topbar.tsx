@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { 
   Play, Save, Loader2, FolderOpen, Layout, PenTool, 
-  Activity, Camera, Layers, Zap, Globe, RotateCw, Menu, Settings
+  Activity, Camera, Layers, Zap, Globe, RotateCw
 } from 'lucide-react';
 import { useProjectStore } from '../state/project_state';
 import * as THREE from 'three';
@@ -18,10 +18,6 @@ export const Topbar: React.FC = () => {
   } = useProjectStore();
 
   const loadRef = useRef<HTMLInputElement>(null);
-
-  const toggleMobileMenu = (className: string) => {
-    document.querySelector(className)?.classList.toggle('active');
-  };
 
   const handleSaveProject = () => {
     const data = JSON.stringify(objects, null, 2);
@@ -191,16 +187,7 @@ export const Topbar: React.FC = () => {
 
   return (
     <div className="topbar">
-      <style>{`
-        @media (max-width: 900px) {
-          .mobile-menu-btn { display: flex !important; }
-        }
-      `}</style>
-      <button className="button mobile-menu-btn" style={{ display: 'none' }} onClick={() => toggleMobileMenu('.left-panel')}>
-          <Menu size={14} />
-      </button>
-
-      <div className="logo" style={{ cursor: 'pointer', fontSize: '14px', letterSpacing: '1px' }} onClick={() => setCurrentView('WORKSPACE')}>
+      <div className="logo" style={{ minWidth: '160px', cursor: 'pointer', fontSize: '14px', letterSpacing: '1px' }} onClick={() => setCurrentView('WORKSPACE')}>
         BEAM <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>AUDIO</span> RAYS
       </div>
 
@@ -285,10 +272,6 @@ export const Topbar: React.FC = () => {
       </div>
 
       <div className="topbar-actions" style={{ display: 'flex', gap: '4px', minWidth: '200px', justifyContent: 'flex-end', alignItems: 'center' }}>
-        <button className="button mobile-menu-btn" style={{ display: 'none' }} onClick={() => toggleMobileMenu('.right-panel')}>
-            <Settings size={14} />
-        </button>
-
         {/* File operations group */}
         <div style={{ display: 'flex', gap: '2px', borderRight: '1px solid var(--border-color)', paddingRight: '6px' }}>
           <input type="file" ref={loadRef} style={{ display: 'none' }} accept=".rays" onChange={handleLoadProject} />
