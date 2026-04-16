@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { 
   SceneObject, SimulationResult, SpeakerModel, 
-  EnvironmentSettings
+  EnvironmentSettings, AcousticMaterial
 } from '../types';
 
 export type Perspective = 'WORKSPACE' | 'MARKETPLACE' | 'DESIGNER' | 'ANALYSIS';
@@ -31,6 +31,7 @@ export interface ProjectState {
   auralizationSettings: { sampleUrl: string; dry: number; wet: number; isPlaying: boolean; };
   showAnalysis: boolean;
   installedModels: SpeakerModel[];
+  installedMaterials: AcousticMaterial[];
   hasSeenTutorial: boolean;
   setEnvironmentSettings: (settings: Partial<EnvironmentSettings>) => void;
   addObject: (obj: Omit<SceneObject, 'id'>) => void;
@@ -54,6 +55,8 @@ export interface ProjectState {
   redo: () => void;
   installModel: (model: SpeakerModel) => void;
   uninstallModel: (id: string) => void;
+  installMaterial: (material: AcousticMaterial) => void;
+  uninstallMaterial: (name: string) => void;
   dismissTutorial: () => void;
 }
 
@@ -65,6 +68,7 @@ export const useProjectStore = create<ProjectState>()(
       past: [],
       future: [],
       installedModels: [],
+      installedMaterials: [],
       showAnalysis: false,
       environmentSettings: {
         temperature: 20,
@@ -166,6 +170,12 @@ export const useProjectStore = create<ProjectState>()(
       uninstallModel: (id) => set((state) => ({ 
         installedModels: state.installedModels.filter(m => m.id !== id) 
       })),
+      installMaterial: (material) => set((state) => ({ 
+        installedMaterials: [...state.installedMaterials.filter(m => m.name !== material.name), material] 
+      })),
+      uninstallMaterial: (name) => set((state) => ({ 
+        installedMaterials: state.installedMaterials.filter(m => m.name !== name) 
+      })),
       dismissTutorial: () => set({ hasSeenTutorial: true }),
     }),
     {
@@ -176,6 +186,7 @@ export const useProjectStore = create<ProjectState>()(
       partialize: (state) => ({
         objects: state.objects,
         installedModels: state.installedModels,
+        installedMaterials: state.installedMaterials,
         environmentSettings: state.environmentSettings,
         showRays: state.showRays,
         showHeatmap: state.showHeatmap,

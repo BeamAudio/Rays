@@ -27,10 +27,13 @@ export interface DirectivityPattern {
 export interface AcousticMaterial {
   name: string;
   category?: string;
+  type?: 'broadband' | 'resonator' | 'panel' | 'bass-trap' | 'custom';
   absorption: number[]; // 24 octave bands: 50Hz to 10kHz
   scattering?: number;  // Scattering coefficient (0-1 scalar)
   transmission?: number; // Transmission coefficient (0-1 scalar)
   density?: number;     // Volumetric attenuation coefficient
+  thickness?: number;   // Physical thickness in meters
+  flowResistivity?: number; // Rayls/m
 }
 
 export interface SpeakerModel {
@@ -41,6 +44,8 @@ export interface SpeakerModel {
   specs?: string;
   directivity: DirectivityPattern;
   imageUrl?: string;
+  frequencyResponse?: number[]; // 24 bands relative responses in dB
+  pwl?: number; // Maximum Sound Power Level (PWL) in dB
 }
 
 export interface SceneObject {
