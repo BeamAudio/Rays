@@ -1,406 +1,367 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useProjectStore } from '../state/project_state';
-import type { SpeakerModel, DirectivityPattern, AcousticMaterial } from '../types';
-
-import { Save, PenTool, Activity, Share2, Code, Download, Layers, Zap } from 'lucide-react';
+import type { SceneObject, SpeakerModel, AcousticMaterial, SimulationResult } from '../types';
+import * as THREE from 'three';
+import { Save, PenTool, Activity, Share2, Code, Download, Speaker, Layers, Zap, PlusSquare, Play, Trash2, Maximize } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
-import { BalloonVisualizer } from './BalloonVisualizer';
-import { NumericInput } from './NumericInput';
+import { OrbitControls, TransformControls, Grid } from '@react-three/drei';
 import { SpectralEditor } from './SpectralEditor';
+
+const SandboxRenderer: React.FC<{ 
+  objects: SceneObject[], 
+  selectedId: string | null, 
+  onSelect: (id: string | null) => void,
+  onUpdate: (id: string, updates: Partial<SceneObject>) => void
+}> = ({ objects, selectedId, onSelect, onUpdate }) => {
+  return (
+    <>
+      <ambientLight intensity={0.5} />
+      <pointLight position={[10, 10, 10]} intensity={0.8} />
+      <Grid infiniteGrid fadeDistance={20} fadeStrength={5} sectionColor="#004040" cellColor="#111" sectionSize={1} cellSize={0.2} />
+      
+      {objects.map(obj => (
+        <SandboxObject 
+          key={obj.id} 
+          obj={obj} 
+          isSelected={selectedId === obj.id} 
+          onSelect={() => onSelect(obj.id)} 
+          onUpdate={onUpdate} 
+        />
+      ))}
+      <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 1.5} />
+      <mesh onPointerMissed={() => onSelect(null)}>
+          <planeGeometry args={[100, 100]} />
+          <meshBasicMaterial visible={false} />
+      </mesh>
+    </>
+  );
+};
+
+const SandboxObject: React.FC<{ 
+  obj: SceneObject, 
+  isSelected: boolean, 
+  onSelect: () => void,
+  onUpdate: (id: string, updates: Partial<SceneObject>) => void
+}> = ({ obj, isSelected, onSelect, onUpdate }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  const handleTransform = () => {
+    if (meshRef.current) {
+      const { position, rotation, scale } = meshRef.current;
+      onUpdate(obj.id, {
+        position: [position.x, position.y, position.z],
+        rotation: [rotation.x, rotation.y, rotation.z],
+        scale: [scale.x, scale.y, scale.z],
+      });
+    }
+  };
+
+  const isTestHardware = obj.id === 'sandbox_src' || obj.id === 'sandbox_mic';
+
+  return (
+    <group>
+      {isSelected && (
+        <TransformControls object={meshRef.current || undefined} onObjectChange={handleTransform} mode="translate" />
+      )}
+      <mesh
+        ref={meshRef}
+        position={obj.position}
+        rotation={obj.rotation}
+        scale={obj.scale}
+        onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      >
+        {obj.shape === 'box' ? <boxGeometry args={[1, 1, 1]} /> : 
+         obj.shape === 'sphere' ? <sphereGeometry args={[0.2, 16, 16]} /> : 
+         <planeGeometry args={[1, 1]} />}
+
+        {obj.type === 'source' ? (
+          <meshStandardMaterial color="#00ffff" emissive="#00ffff" emissiveIntensity={isSelected ? 1 : 0.5} wireframe />
+        ) : obj.type === 'receiver' ? (
+          <meshStandardMaterial color="#ff00ff" emissive="#ff00ff" emissiveIntensity={isSelected ? 1 : 0.5} wireframe />
+        ) : (
+          <meshStandardMaterial color={isSelected ? "#FFF" : "#888"} opacity={0.8} transparent />
+        )}
+      </mesh>
+    </group>
+  );
+};
 
 export const SpeakerDesigner: React.FC = () => {
   const { installModel, installMaterial, setCurrentView } = useProjectStore();
   
-  const [designerMode, setDesignerMode] = useState<'source' | 'material'>('source');
+  const [designerMode, setDesignerMode] = useState<'source' | 'material'>('material');
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simProgress, setSimProgress] = useState(0);
 
-  // —— Source State ——
-  const [model, setModel] = useState<Partial<SpeakerModel>>({
-    name: 'New Custom Speaker',
-    manufacturer: 'Beam Audio Designer',
-    type: 'Point-Source'
-  });
-  const [hSpread, setHSpread] = useState(90);
-  const [vSpread, setVSpread] = useState(60);
-  const [tilt, setTilt] = useState(0); 
-  const [pan, setPan] = useState(0);   
-  const [pwl, setPwl] = useState(100);
-  const [frequencyResponse, setFrequencyResponse] = useState<number[]>(Array(24).fill(0));
+  // —— Identity State ——
+  const [itemName, setItemName] = useState('New Sandbox Asset');
+  const [itemCategory, setItemCategory] = useState('Custom');
 
-  // —— Material State ——
-  const [material, setMaterial] = useState<Partial<AcousticMaterial>>({
-    name: 'New Custom Material',
-    category: 'Acoustic Treatment',
-    type: 'broadband'
-  });
-  const [thickness, setThickness] = useState(0.1);
-  const [flowResistivity, setFlowResistivity] = useState(10000);
-  const [absorption, setAbsorption] = useState<number[]>(Array(24).fill(0.5));
-  
-  // Auto-generate directivity based on H/V spread
-  const generateDirectivity = (h: number, v: number): DirectivityPattern => {
-     const horizontal = Array.from({ length: 36 }, (_, i) => i * 10);
-     const vertical = Array.from({ length: 19 }, (_, i) => i * 10);
-     const attenuation: number[][] = [];
+  // —— Sandbox State ——
+  const [sandboxObjects, setSandboxObjects] = useState<SceneObject[]>([
+    { id: 'sandbox_src', name: 'Test Source', type: 'source', shape: 'sphere', position: [0, 0, 2], scale: [1,1,1], rotation: [0,0,0], sourceType: 'omni', intensity: 100 },
+    { id: 'sandbox_mic', name: 'Measurement Mic', type: 'receiver', shape: 'sphere', position: [0, 0, -2], scale: [1,1,1], rotation: [0,0,0] },
+    { id: `box_${Date.now()}`, name: 'Test geometry', type: 'mesh', shape: 'box', position: [0,0,0], scale: [1,1,0.2], rotation: [0,0,0] }
+  ]);
+  const [selectedSandboxId, setSelectedSandboxId] = useState<string | null>(null);
 
-     for (let f = 0; f < 24; f++) {
-       const band: number[] = [];
-       // Simpler horn model: H/V Gaussian spread
-       for (let vIdx = 0; vIdx < 19; vIdx++) {
-         const vDeg = vIdx * 10 - 90;
-         for (let hIdx = 0; hIdx < 36; hIdx++) {
-           const hDeg = hIdx * 10 > 180 ? hIdx * 10 - 360 : hIdx * 10;
-           const hDist = Math.max(0, Math.abs(hDeg) - h/2);
-           const vDist = Math.max(0, Math.abs(vDeg) - v/2);
-           const atten = -(hDist * 0.5 + vDist * 0.8);
-           band.push(Math.max(-40, atten));
+  // —— Results State ——
+  const [frequencyResponse, setFrequencyResponse] = useState<number[]>(Array(24).fill(-24)); // dB
+  const [absorption, setAbsorption] = useState<number[]>(Array(24).fill(0)); // 0-1
+  const [etcData, setEtcData] = useState<{time: number, energy: number}[]>([]);
+
+  const handleUpdateSandboxObj = (id: string, updates: Partial<SceneObject>) => {
+    setSandboxObjects(prev => prev.map(o => o.id === id ? { ...o, ...updates } : o));
+  };
+
+  const addSandboxPrimitive = (shape: 'box' | 'plane') => {
+    const newObj: SceneObject = {
+      id: `sandbox_${Date.now()}`,
+      name: `Custom ${shape}`,
+      type: 'mesh',
+      shape,
+      position: [Math.random() - 0.5, 0, Math.random() - 0.5],
+      scale: [1, 1, shape === 'box' ? 1 : 1],
+      rotation: [0, 0, 0]
+    };
+    setSandboxObjects([...sandboxObjects, newObj]);
+    setSelectedSandboxId(newObj.id);
+  };
+
+  const removeSelectedPrimitive = () => {
+    if (selectedSandboxId && selectedSandboxId !== 'sandbox_src' && selectedSandboxId !== 'sandbox_mic') {
+      setSandboxObjects(prev => prev.filter(o => o.id !== selectedSandboxId));
+      setSelectedSandboxId(null);
+    }
+  };
+
+  const runSandboxSimulation = () => {
+    setIsSimulating(true);
+    setSimProgress(0);
+    
+    // Fake the triangles for primitives to feed BVH worker correctly
+    const workerObjects = sandboxObjects.map(obj => {
+      if (obj.type === 'mesh') {
+         // Create a fake geometry just to extract triangles for the worker
+         const geom = obj.shape === 'box' ? new THREE.BoxGeometry(1,1,1) : new THREE.PlaneGeometry(1,1);
+         geom.scale(obj.scale[0], obj.scale[1], obj.scale[2]);
+         geom.rotateX(obj.rotation[0]);
+         geom.rotateY(obj.rotation[1]);
+         geom.rotateZ(obj.rotation[2]);
+         geom.translate(obj.position[0], obj.position[1], obj.position[2]);
+         
+         const posAttr = geom.attributes.position;
+         const indexAttr = geom.index;
+         const triangles = [];
+         if (indexAttr) {
+            for(let i=0; i<indexAttr.count; i+=3) {
+               const a = indexAttr.getX(i); const b = indexAttr.getX(i+1); const c = indexAttr.getX(i+2);
+               triangles.push(
+                  posAttr.getX(a), posAttr.getY(a), posAttr.getZ(a),
+                  posAttr.getX(b), posAttr.getY(b), posAttr.getZ(b),
+                  posAttr.getX(c), posAttr.getY(c), posAttr.getZ(c)
+               );
+            }
          }
-       }
-       attenuation.push(band);
-     }
-     return { name: model.name || 'Custom', horizontal, vertical, attenuation };
+         return { ...obj, triangles };
+      }
+      return obj;
+    });
+
+    const worker = new Worker(new URL('../engine/simulation_worker.ts', import.meta.url), { type: 'module' });
+    worker.onmessage = (e) => {
+      if (e.data.type === 'PROGRESS') {
+        setSimProgress(e.data.progress);
+      } else if (e.data.type === 'DONE') {
+        const res: SimulationResult = e.data.results.find((r: any) => r.receiverId === 'sandbox_mic');
+        if (res && res.metrics) {
+           // Set Frequency Results
+           if (designerMode === 'source') {
+              setFrequencyResponse(res.metrics.spl.map(v => isFinite(v) ? v : -30));
+           } else {
+              // Mock absorption extraction: Normalize the received SPL against an ideal 0dB reflection
+              const alpha = res.metrics.spl.map(v => isFinite(v) ? Math.max(0, Math.min(1, 1 - Math.pow(10, v/10)/100)) : 1);
+              setAbsorption(alpha);
+           }
+           // Set Time-Domain Data (ETC)
+           if (res.metrics.etc) setEtcData(res.metrics.etc);
+        }
+        setIsSimulating(false);
+        worker.terminate();
+      } else if (e.data.type === 'ERROR') {
+        console.error('Sandbox Simulation Error:', e.data.error);
+        setIsSimulating(false);
+        worker.terminate();
+      }
+    };
+
+    worker.postMessage({
+       objects: workerObjects,
+       sources: workerObjects.filter(o => o.type === 'source'),
+       receivers: workerObjects.filter(o => o.type === 'receiver'),
+       environmentSettings: { rayCount: 15000, maxBounces: 5, ismOrder: 2 } // High detail, few bounces for a local sandbox
+    });
   };
 
   const handleSave = () => {
     if (designerMode === 'source') {
-        const directivity = generateDirectivity(hSpread, vSpread);
         const finalModel: SpeakerModel = {
-          id: `custom_source_${Date.now()}`,
-          name: model.name || 'Untitled Source',
-          manufacturer: model.manufacturer || 'Unknown',
-          type: model.type || 'Point-Source',
-          directivity,
-          specs: `Custom profile generated with ${hSpread}x${vSpread} beamwidth. PWL: ${pwl}dB.`,
-          pwl,
+          id: `sandbox_src_${Date.now()}`,
+          name: itemName || 'Untitled Sandbox Source',
+          manufacturer: itemCategory || 'Custom',
+          type: 'Point-Source',
+          directivity: { name: 'Omni', horizontal: [], vertical: [], attenuation: [] },
+          specs: `Custom source derived from 3D Micro-Sandbox test.`,
+          pwl: 100,
           frequencyResponse
         };
         installModel(finalModel);
         alert('Source Model created and installed in your library.');
     } else {
         const finalMaterial: AcousticMaterial = {
-          name: material.name || 'Untitled Material',
-          category: material.category || 'Custom',
-          type: material.type,
+          name: itemName || 'Untitled Sandbox Material',
+          category: itemCategory || 'Custom',
+          type: 'broadband',
           absorption,
-          thickness,
-          flowResistivity
         };
         installMaterial(finalMaterial);
-        alert('Acoustic Material created and installed in your library.');
+        alert('Acoustic Material created from Sandbox and installed.');
     }
     setCurrentView('WORKSPACE');
   };
 
-  const handleExport = () => {
-    let exportData;
-    let extension = '';
-    
-    if (designerMode === 'source') {
-        const directivity = generateDirectivity(hSpread, vSpread);
-        exportData = {
-          id: `custom_source_${Date.now()}`,
-          name: model.name || 'Untitled Source',
-          manufacturer: model.manufacturer || 'Unknown',
-          type: model.type || 'Point-Source',
-          directivity,
-          specs: `Custom profile generated with ${hSpread}x${vSpread} beamwidth. PWL: ${pwl}dB.`,
-          pwl,
-          frequencyResponse
-        };
-        extension = '.rays_speaker';
-    } else {
-        exportData = {
-          name: material.name || 'Untitled Material',
-          category: material.category || 'Custom',
-          type: material.type,
-          absorption,
-          thickness,
-          flowResistivity
-        };
-        extension = '.rays_material';
-    }
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${exportData.name}${extension}`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const maxEtc = useMemo(() => etcData.length > 0 ? Math.max(...etcData.map(e => e.energy)) : 1, [etcData]);
 
   return (
     <div className="designer-container" style={{ display: 'flex', height: 'calc(100vh - 60px)', background: 'var(--bg-primary)' }}>
       
-      {/* LEFT: Properties & Sculpting */}
-      <div style={{ width: '400px', borderRight: '1px solid var(--border-color)', padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      {/* LEFT: Properties & Assets */}
+      <div style={{ width: '350px', borderRight: '1px solid var(--border-color)', padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', color: 'var(--accent-primary)' }}>
-          <PenTool size={24} />
-          <h2 style={{ fontSize: '20px', fontWeight: '800', letterSpacing: '0.05em' }}>MICRO DESIGNER</h2>
+          <Maximize size={24} />
+          <h2 style={{ fontSize: '18px', fontWeight: '800', letterSpacing: '0.05em' }}>MICRO SANDBOX</h2>
         </div>
 
         {/* Mode Toggle */}
-        <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: '8px', padding: '4px', marginBottom: '30px' }}>
-            <button 
-                onClick={() => setDesignerMode('source')}
-                style={{ flex: 1, padding: '8px', border: 'none', background: designerMode === 'source' ? 'var(--accent-primary)' : 'transparent', color: designerMode === 'source' ? '#000' : 'var(--text-secondary)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s' }}>
-                <Zap size={16} /> Active Source
+        <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: '8px', padding: '4px', marginBottom: '20px' }}>
+            <button onClick={() => setDesignerMode('source')} style={{ flex: 1, padding: '8px', border: 'none', background: designerMode === 'source' ? 'var(--accent-primary)' : 'transparent', color: designerMode === 'source' ? '#000' : 'var(--text-secondary)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s' }}>
+                <Zap size={14} /> Source
             </button>
-            <button 
-                onClick={() => setDesignerMode('material')}
-                style={{ flex: 1, padding: '8px', border: 'none', background: designerMode === 'material' ? 'var(--accent-primary)' : 'transparent', color: designerMode === 'material' ? '#000' : 'var(--text-secondary)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s' }}>
-                <Layers size={16} /> Passive Material
+            <button onClick={() => setDesignerMode('material')} style={{ flex: 1, padding: '8px', border: 'none', background: designerMode === 'material' ? 'var(--accent-primary)' : 'transparent', color: designerMode === 'material' ? '#000' : 'var(--text-secondary)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.2s' }}>
+                <Layers size={14} /> Material
             </button>
         </div>
 
-        {designerMode === 'source' ? (
-          <>
-            <section style={{ marginBottom: '30px' }}>
-              <h4 style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '15px' }}>Identity & Specs</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div className="control-group">
-                  <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Model Name</label>
-                  <input 
-                    className="input" 
-                    value={model.name} 
-                    onChange={e => setModel(m => ({ ...m, name: e.target.value }))}
-                    style={{ width: '100%', borderRadius: '8px' }}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <div className="control-group" style={{ flex: 1 }}>
-                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Manufacturer</label>
-                      <input 
-                        className="input" 
-                        value={model.manufacturer} 
-                        onChange={e => setModel(m => ({ ...m, manufacturer: e.target.value }))}
-                        style={{ width: '100%', borderRadius: '8px' }}
-                      />
-                    </div>
-                    <div className="control-group" style={{ flex: 1 }}>
-                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Cabinet Type</label>
-                      <select 
-                        className="input" 
-                        value={model.type} 
-                        onChange={e => setModel(m => ({ ...m, type: e.target.value as any }))}
-                        style={{ width: '100%', borderRadius: '8px' }}
-                      >
-                        <option value="Point-Source">Point-Source</option>
-                        <option value="Line-Array">Line-Array</option>
-                        <option value="Ceiling">Ceiling</option>
-                      </select>
-                    </div>
-                </div>
-                <div className="control-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Max Sound Power Level (PWL)</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <input type="range" min="60" max="150" step="1" value={pwl} onChange={e => setPwl(parseInt(e.target.value))} style={{ flex: 1, accentColor: 'var(--accent-primary)' }} />
-                        <span style={{ fontSize: '12px', fontWeight: 'bold', width: '40px', color: 'var(--accent-primary)' }}>{pwl} dB</span>
-                    </div>
-                </div>
-              </div>
-            </section>
+        <section style={{ marginBottom: '20px' }}>
+          <h4 style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '10px' }}>Identity Output</h4>
+          <div className="control-group" style={{ marginBottom: '10px' }}>
+             <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Asset Name</label>
+             <input className="input" value={itemName} onChange={e => setItemName(e.target.value)} style={{ width: '100%', borderRadius: '8px' }} />
+          </div>
+          <div className="control-group">
+             <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Category</label>
+             <input className="input" value={itemCategory} onChange={e => setItemCategory(e.target.value)} style={{ width: '100%', borderRadius: '8px' }} />
+          </div>
+        </section>
 
-            <section style={{ marginBottom: '30px' }}>
-              <h4 style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '15px' }}>Directivity Sculpting</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                 <div className="control-group">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                       <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Horizontal Beamwidth</label>
-                       <div style={{ width: '60px' }}>
-                         <NumericInput value={hSpread} onChange={setHSpread} min={5} max={180} step={1} style={{ padding: '2px 4px', fontSize: '10px', textAlign: 'center' }} />
-                       </div>
-                    </div>
-                    <input type="range" min="10" max="180" step="1" value={hSpread} onChange={e => setHSpread(parseInt(e.target.value))} style={{ width: '100%', accentColor: 'var(--accent-primary)' }} />
-                 </div>
-                 <div className="control-group">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                       <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Vertical Beamwidth</label>
-                       <div style={{ width: '60px' }}>
-                         <NumericInput value={vSpread} onChange={setVSpread} min={5} max={180} step={1} style={{ padding: '2px 4px', fontSize: '10px', textAlign: 'center' }} />
-                       </div>
-                    </div>
-                    <input type="range" min="10" max="180" step="1" value={vSpread} onChange={e => setVSpread(parseInt(e.target.value))} style={{ width: '100%', accentColor: 'var(--accent-primary)' }} />
-                 </div>
-                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                    <div className="control-group" style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                           <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Tilt</label>
-                           <NumericInput value={tilt} onChange={setTilt} min={-90} max={90} step={1} style={{ padding: '2px 4px', fontSize: '10px', width: '40px', textAlign: 'center' }} />
-                        </div>
-                    </div>
-                    <div className="control-group" style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                           <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Pan</label>
-                           <NumericInput value={pan} onChange={setPan} min={-180} max={180} step={1} style={{ padding: '2px 4px', fontSize: '10px', width: '40px', textAlign: 'center' }} />
-                        </div>
-                    </div>
-                 </div>
-              </div>
-            </section>
-          </>
-        ) : (
-          <>
-            <section style={{ marginBottom: '30px' }}>
-              <h4 style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '15px' }}>Material Properties</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div className="control-group">
-                  <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Material Name</label>
-                  <input 
-                    className="input" 
-                    value={material.name} 
-                    onChange={e => setMaterial(m => ({ ...m, name: e.target.value }))}
-                    style={{ width: '100%', borderRadius: '8px' }}
-                  />
+        <section style={{ marginBottom: '20px', flex: 1 }}>
+          <h4 style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '10px' }}>Sandbox Construction</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+             <button className="button" style={{ fontSize: '11px', gap: '6px' }} onClick={() => addSandboxPrimitive('box')}>
+               <PlusSquare size={14} /> Add Block
+             </button>
+             <button className="button" style={{ fontSize: '11px', gap: '6px' }} onClick={() => addSandboxPrimitive('plane')}>
+               <PlusSquare size={14} /> Add Plate
+             </button>
+          </div>
+          
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: '8px', padding: '10px', maxHeight: '180px', overflowY: 'auto' }}>
+             {sandboxObjects.map(obj => (
+                <div key={obj.id} onClick={() => setSelectedSandboxId(obj.id)} style={{ padding: '6px 8px', fontSize: '11px', display: 'flex', justifyContent: 'space-between', background: selectedSandboxId === obj.id ? 'var(--bg-tertiary)' : 'transparent', borderLeft: selectedSandboxId === obj.id ? '2px solid var(--accent-primary)' : '2px solid transparent', cursor: 'pointer', marginBottom: '2px', color: obj.id === 'sandbox_src' ? '#00ffff' : obj.id === 'sandbox_mic' ? '#ff00ff' : '#fff' }}>
+                   <span>{obj.name}</span>
+                   {obj.id !== 'sandbox_src' && obj.id !== 'sandbox_mic' && selectedSandboxId === obj.id && (
+                      <Trash2 size={12} color="#ff4444" onClick={(e) => { e.stopPropagation(); removeSelectedPrimitive(); }} />
+                   )}
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <div className="control-group" style={{ flex: 1 }}>
-                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Category</label>
-                      <input 
-                        className="input" 
-                        value={material.category} 
-                        onChange={e => setMaterial(m => ({ ...m, category: e.target.value }))}
-                        style={{ width: '100%', borderRadius: '8px' }}
-                      />
-                    </div>
-                    <div className="control-group" style={{ flex: 1 }}>
-                      <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Type</label>
-                      <select 
-                        className="input" 
-                        value={material.type} 
-                        onChange={e => setMaterial(m => ({ ...m, type: e.target.value as any }))}
-                        style={{ width: '100%', borderRadius: '8px' }}
-                      >
-                        <option value="broadband">Broadband</option>
-                        <option value="bass-trap">Bass Trap</option>
-                        <option value="resonator">Resonator</option>
-                        <option value="panel">Panel</option>
-                      </select>
-                    </div>
-                </div>
-                <div className="control-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Thickness (m)</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <input type="range" min="0.01" max="1.0" step="0.01" value={thickness} onChange={e => setThickness(parseFloat(e.target.value))} style={{ flex: 1, accentColor: 'var(--accent-primary)' }} />
-                        <span style={{ fontSize: '12px', fontWeight: 'bold', width: '40px', color: 'var(--accent-primary)' }}>{thickness.toFixed(2)} m</span>
-                    </div>
-                </div>
-                <div className="control-group">
-                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Flow Resistivity (Rayls/m)</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <input 
-                            type="number" 
-                            className="input" 
-                            value={flowResistivity} 
-                            onChange={e => setFlowResistivity(parseInt(e.target.value) || 0)} 
-                            style={{ flex: 1, borderRadius: '8px' }} 
-                        />
-                    </div>
-                </div>
-              </div>
-            </section>
-          </>
-        )}
+             ))}
+          </div>
+        </section>
 
-        <div style={{ flex: 1 }}></div>
-
-        <button 
-          className="button primary" 
-          style={{ width: '100%', height: '45px', borderRadius: '12px', gap: '8px', marginTop: '20px' }}
-          onClick={handleSave}
-        >
-          <Save size={18} /> INITIALIZE & INSTALL
+        <button className="button primary" style={{ width: '100%', height: '45px', borderRadius: '12px', gap: '8px' }} onClick={handleSave}>
+          <Save size={18} /> INSTALL TO WORKSPACE
         </button>
-
-        <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '30px', paddingTop: '20px' }}>
-           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', marginBottom: '15px' }}>
-              <Share2 size={16} />
-              <h4 style={{ fontSize: '11px', textTransform: 'uppercase', margin: 0 }}>Community Hub</h4>
-           </div>
-           
-           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <button 
-                className="button" 
-                style={{ fontSize: '11px', gap: '6px' }}
-                onClick={handleExport}
-              >
-                <Download size={14} /> Export .rays
-              </button>
-              <a 
-                href="https://github.com/BeamAudio/Rays/pulls" 
-                target="_blank" 
-                rel="noreferrer"
-                className="button" 
-                style={{ fontSize: '11px', gap: '6px', textDecoration: 'none' }}
-              >
-                <Code size={14} /> Submit PR
-              </a>
-           </div>
-        </div>
+        <button className="button" style={{ width: '100%', height: '35px', borderRadius: '8px', gap: '8px', marginTop: '10px', fontSize: '11px' }}>
+          <Share2 size={14} /> PUBLISH TO MARKETPLACE
+        </button>
       </div>
 
-      {/* RIGHT: 3D Visualization & Spectral Profile */}
-      <div style={{ flex: 1, position: 'relative', background: '#000', display: 'flex', flexDirection: 'column' }}>
-        
-        {/* Top: 3D Visualization (only for source) */}
-        {designerMode === 'source' ? (
-            <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 10, textAlign: 'right', pointerEvents: 'none' }}>
-                   <h3 style={{ fontSize: '14px', color: 'var(--text-primary)' }}>3D Balloon Visualization</h3>
-                   <p style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Broadband energy distribution (0 dB center)</p>
-                </div>
-                <div className="glass-panel" style={{ width: '100%', height: '100%' }}>
-                   <Canvas shadows gl={{ antialias: true }}>
-                      <color attach="background" args={['#050510']} />
-                      <fog attach="fog" args={['#050510', 5, 15]} />
-                      <BalloonVisualizer hSpread={hSpread} vSpread={vSpread} tilt={tilt} pan={pan} />
-                   </Canvas>
-                </div>
-            </div>
-        ) : (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '20px', background: 'radial-gradient(circle at center, #111418 0%, #050510 100%)' }}>
-                <Layers size={64} style={{ color: 'var(--border-color)', opacity: 0.5 }} />
-                <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    <h3 style={{ fontSize: '16px', color: 'var(--text-primary)' }}>Material Designer</h3>
-                    <p style={{ fontSize: '12px', opacity: 0.8 }}>3D Visualization not applicable for passive surfaces.</p>
-                </div>
-            </div>
-        )}
+      {/* CENTER: 3D Sandbox View */}
+      <div style={{ flex: 1, position: 'relative', background: '#050508', overflow: 'hidden', borderRight: '1px solid var(--border-color)' }}>
+         <div style={{ position: 'absolute', top: '15px', left: '20px', zIndex: 10 }}>
+            <button 
+               className="button primary" 
+               onClick={runSandboxSimulation}
+               disabled={isSimulating}
+               style={{ gap: '8px', borderRadius: '20px', padding: '8px 24px', background: isSimulating ? 'var(--text-secondary)' : 'var(--accent-primary)', color: '#000', fontWeight: 'bold' }}
+            >
+               {isSimulating ? `SIMULATING (${simProgress}%)` : <><Play size={16} fill="#000" /> RUN ACOUSTIC TEST</>}
+            </button>
+         </div>
 
-        {/* BOTTOM: Spectral Signature interactive builder */}
-        <div style={{ 
-            height: '280px', 
-            background: 'var(--bg-secondary)', 
-            borderTop: '1px solid var(--border-color)', 
-            padding: '20px',
-            flexShrink: 0
-        }}>
-           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-              <h4 style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Activity size={14} color="var(--accent-primary)" /> 
-                  {designerMode === 'source' ? 'Spectral Response (dB)' : 'Absorption Profile (0.0 - 1.0)'}
-              </h4>
-              <span style={{ fontSize: '10px', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Drag inside the editor to sculpt</span>
-           </div>
-           
-           <div style={{ width: '100%' }}>
-              {designerMode === 'source' ? (
-                 <SpectralEditor 
-                    data={frequencyResponse} 
-                    onChange={setFrequencyResponse} 
-                    mode="dB" 
-                    minDb={-24} 
-                    maxDb={24} 
-                 />
-              ) : (
-                 <SpectralEditor 
-                    data={absorption} 
-                    onChange={setAbsorption} 
-                    mode="coefficient" 
-                 />
-              )}
-           </div>
-        </div>
+         <div style={{ position: 'absolute', top: '15px', right: '20px', zIndex: 10, textAlign: 'right' }}>
+            <h3 style={{ fontSize: '14px', color: 'var(--text-primary)' }}>Micro Environment</h3>
+            <p style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Free-field Anechoic Space (1x1x1 Grid)</p>
+         </div>
+
+         <div className="glass-panel" style={{ width: '100%', height: '100%' }}>
+            <Canvas shadows gl={{ antialias: true }} camera={{ position: [2, 2, 3], fov: 45 }}>
+               <color attach="background" args={['#050508']} />
+               <SandboxRenderer objects={sandboxObjects} selectedId={selectedSandboxId} onSelect={setSelectedSandboxId} onUpdate={handleUpdateSandboxObj} />
+            </Canvas>
+         </div>
       </div>
+
+      {/* RIGHT: Extracted Analytics */}
+      <div style={{ width: '400px', background: 'var(--bg-secondary)', display: 'flex', flexDirection: 'column' }}>
+         <div style={{ padding: '20px', borderBottom: '1px solid var(--border-color)' }}>
+            <h4 style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+               <Activity size={14} color="var(--accent-primary)" /> Time Domain (Impulse Response)
+            </h4>
+            <div style={{ width: '100%', height: '120px', background: 'rgba(0,0,0,0.4)', borderRadius: '8px', position: 'relative', overflow: 'hidden' }}>
+               {etcData.length === 0 ? (
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: '10px' }}>Run test to generate ETC</div>
+               ) : (
+                  <div style={{ display: 'flex', alignItems: 'flex-end', height: '100%', padding: '0 4px', gap: '1px' }}>
+                     {etcData.map((pt, i) => (
+                        <div key={i} style={{ flex: 1, minWidth: '2px', background: 'var(--accent-primary)', height: `${(pt.energy / maxEtc) * 100}%`, opacity: 0.8 }} />
+                     ))}
+                  </div>
+               )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '9px', color: 'var(--text-secondary)' }}>
+               <span>0ms</span>
+               <span>{etcData.length > 0 ? (etcData[etcData.length-1].time * 1000).toFixed(0) + 'ms' : 'T_max'}</span>
+            </div>
+         </div>
+
+         <div style={{ padding: '20px', flex: 1 }}>
+            <h4 style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+               <Activity size={14} color="var(--accent-primary)" /> Extracted Frequency Target
+            </h4>
+            
+            <div style={{ width: '100%', pointerEvents: 'none' }}>
+               {designerMode === 'source' ? (
+                  <SpectralEditor data={frequencyResponse} onChange={() => {}} mode="dB" minDb={-24} maxDb={24} />
+               ) : (
+                  <SpectralEditor data={absorption} onChange={() => {}} mode="coefficient" />
+               )}
+            </div>
+            <p style={{ fontSize: '9px', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '10px', fontStyle: 'italic' }}>
+               Analytic data derived from micro-simulation.
+            </p>
+         </div>
+      </div>
+
     </div>
   );
 };
