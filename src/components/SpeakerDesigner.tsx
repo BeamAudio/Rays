@@ -3,7 +3,7 @@ import { useProjectStore } from '../state/project_state';
 import type { SceneObject, SpeakerModel, AcousticMaterial, SimulationResult } from '../types';
 import * as THREE from 'three';
 import { Save, PenTool, Activity, Share2, Code, Download, Speaker, Layers, Zap, PlusSquare, Play, Trash2, Maximize } from 'lucide-react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, TransformControls, Grid } from '@react-three/drei';
 import { SpectralEditor } from './SpectralEditor';
 
@@ -11,8 +11,12 @@ const SandboxRenderer: React.FC<{
   objects: SceneObject[], 
   selectedId: string | null, 
   onSelect: (id: string | null) => void,
-  onUpdate: (id: string, updates: Partial<SceneObject>) => void
-}> = ({ objects, selectedId, onSelect, onUpdate }) => {
+  onUpdate: (id: string, updates: Partial<SceneObject>) => void,
+  testMode: 'RAYTRACE' | 'FDTD',
+  fdtdPlaneY: number,
+  isFdtdRunning: boolean,
+  pressureMapRef: React.MutableRefObject<Float32Array | null>
+}> = ({ objects, selectedId, onSelect, onUpdate, testMode, fdtdPlaneY, isFdtdRunning, pressureMapRef }) => {
   return (
     <>
       <ambientLight intensity={0.5} />
@@ -29,6 +33,9 @@ const SandboxRenderer: React.FC<{
         />
       ))}
       <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 1.5} />
+      {testMode === 'FDTD' && (
+         <FdtdAnalysisPlane y={fdtdPlaneY} isRunning={isFdtdRunning} pressureMapRef={pressureMapRef} />
+      )}
       <mesh onPointerMissed={() => onSelect(null)}>
           <planeGeometry args={[100, 100]} />
           <meshBasicMaterial visible={false} />
@@ -86,16 +93,75 @@ const SandboxObject: React.FC<{
   );
 };
 
+const FdtdAnalysisPlane: React.FC<{ y: number, isRunning: boolean, pressureMapRef: React.MutableRefObject<Float32Array | null> }> = ({ y, isRunning, pressureMapRef }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textureRef = useRef<THREE.CanvasTexture>(null);
+  
+  // Creates the canvas element dynamically if it doesn't exist
+  const memCanvas = useMemo(() => {
+    const c = document.createElement('canvas');
+    c.width = 200;
+    c.height = 200;
+    return c;
+  }, []);
+
+  useFrame(() => {
+    if (!isRunning || !pressureMapRef.current || !textureRef.current) return;
+    const ctx = memCanvas.getContext('2d');
+    if (!ctx) return;
+    
+    const imgData = ctx.createImageData(200, 200);
+    const buf = pressureMapRef.current;
+    
+    // Convert 1D pressure map to RGBA
+    for (let i = 0; i < 40000; i++) {
+       const p = buf[i];
+       const val = Math.min(255, Math.max(0, Math.floor(Math.abs(p) * 2000)));
+       const r = p > 0 ? val : 0;
+       const b = p < 0 ? val : 0;
+       
+       imgData.data[i*4] = r;      // R
+       imgData.data[i*4+1] = 0;    // G
+       imgData.data[i*4+2] = b;    // B
+       imgData.data[i*4+3] = val > 5 ? 220 : 0; // A
+    }
+    ctx.putImageData(imgData, 0, 0);
+    textureRef.current.needsUpdate = true;
+  });
+
+  return (
+    <group position={[0, y, 0]} rotation={[-Math.PI/2, 0, 0]}>
+      <mesh position={[0, 0, 0.01]}> 
+        <planeGeometry args={[4, 4]} />
+        <meshBasicMaterial transparent side={THREE.DoubleSide} depthWrite={false}>
+          <canvasTexture ref={textureRef} attach="map" args={[memCanvas]} magFilter={THREE.NearestFilter} />
+        </meshBasicMaterial>
+      </mesh>
+      <mesh>
+        <planeGeometry args={[4, 4]} />
+        <meshBasicMaterial color="#ffff00" wireframe opacity={isRunning ? 0.0 : 0.2} transparent depthWrite={false} />
+      </mesh>
+    </group>
+  );
+};
+
 export const SpeakerDesigner: React.FC = () => {
   const { installModel, installMaterial, setCurrentView } = useProjectStore();
   
   const [designerMode, setDesignerMode] = useState<'source' | 'material'>('material');
+  const [testMode, setTestMode] = useState<'RAYTRACE' | 'FDTD'>('RAYTRACE');
   const [isSimulating, setIsSimulating] = useState(false);
   const [simProgress, setSimProgress] = useState(0);
 
   // —— Identity State ——
   const [itemName, setItemName] = useState('New Sandbox Asset');
   const [itemCategory, setItemCategory] = useState('Custom');
+
+  // —— FDTD State ——
+  const [fdtdPlaneY, setFdtdPlaneY] = useState(0);
+  const [fdtdMode, setFdtdMode] = useState<'impulse' | 'cw'>('impulse');
+  const fdtdWorkerRef = useRef<Worker | null>(null);
+  const pressureMapRef = useRef<Float32Array | null>(null);
 
   // —— Sandbox State ——
   const [sandboxObjects, setSandboxObjects] = useState<SceneObject[]>([
@@ -135,7 +201,83 @@ export const SpeakerDesigner: React.FC = () => {
     }
   };
 
+  const generateFdtdWalls = (objects: SceneObject[], planeY: number, nx: number, ny: number): Uint8Array => {
+    const walls = new Uint8Array(nx * ny);
+    const size = 4; // 4x4 meters sandbox
+    const dx = size / nx;
+    const dy = size / ny;
+
+    for (let yi = 0; yi < ny; yi++) {
+       for (let xi = 0; xi < nx; xi++) {
+          const px = (xi * dx) - (size / 2) + (dx/2);
+          const pz = (yi * dy) - (size / 2) + (dy/2);
+
+          let isWall = false;
+          for (const obj of objects) {
+             if (obj.type !== 'mesh') continue;
+             
+             // AABB intersection calculation
+             const hx = obj.scale[0] / 2;
+             const hy = obj.scale[1] / 2;
+             const hz = obj.scale[2] / 2;
+             
+             if (
+               px >= obj.position[0] - hx && px <= obj.position[0] + hx &&
+               pz >= obj.position[2] - hz && pz <= obj.position[2] + hz &&
+               planeY >= obj.position[1] - hy && planeY <= obj.position[1] + hy
+             ) {
+                isWall = true;
+                break;
+             }
+          }
+          if (isWall) walls[yi * nx + xi] = 1;
+       }
+    }
+    return walls;
+  };
+
+  const stopFdtd = () => {
+    if (fdtdWorkerRef.current) {
+        fdtdWorkerRef.current.postMessage({ type: 'STOP' });
+        fdtdWorkerRef.current.terminate();
+        fdtdWorkerRef.current = null;
+    }
+    setIsSimulating(false);
+  };
+
   const runSandboxSimulation = () => {
+    if (testMode === 'FDTD') {
+        if (isSimulating) {
+           stopFdtd();
+           return;
+        }
+        setIsSimulating(true);
+        const nx = 200; const ny = 200; const size = 4;
+        const walls = generateFdtdWalls(sandboxObjects, fdtdPlaneY, nx, ny);
+        
+        // Find source location on grid
+        const srcObj = sandboxObjects.find(o => o.id === 'sandbox_src');
+        let srcX = 100; let srcY = 100;
+        if (srcObj) {
+           srcX = Math.floor(((srcObj.position[0] + size/2) / size) * nx);
+           srcY = Math.floor(((srcObj.position[2] + size/2) / size) * ny);
+        }
+
+        fdtdWorkerRef.current = new Worker(new URL('../engine/fdtd_worker.ts', import.meta.url), { type: 'module' });
+        fdtdWorkerRef.current.onmessage = (e) => {
+            if (e.data.type === 'RENDER') {
+               pressureMapRef.current = new Float32Array(e.data.pressureMap);
+            }
+        };
+
+        fdtdWorkerRef.current.postMessage({ 
+            type: 'INIT', 
+            payload: { nx, ny, walls, sourceX: srcX, sourceY: srcY, simMode: fdtdMode, frequency: 500 } 
+        });
+        return;
+    }
+
+    // --- RAYTRACING LOGIC ---
     setIsSimulating(true);
     setSimProgress(0);
     
@@ -253,6 +395,38 @@ export const SpeakerDesigner: React.FC = () => {
         </div>
 
         <section style={{ marginBottom: '20px' }}>
+           <h4 style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '10px' }}>Engine Mode</h4>
+           <div style={{ display: 'flex', background: 'var(--bg-tertiary)', borderRadius: '8px', padding: '4px' }}>
+              <button onClick={() => {if(isSimulating) stopFdtd(); setTestMode('RAYTRACE')}} style={{ flex: 1, padding: '6px', fontSize: '11px', border: 'none', background: testMode === 'RAYTRACE' ? '#fff' : 'transparent', color: testMode === 'RAYTRACE' ? '#000' : 'var(--text-secondary)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  Ray Tracing (3D)
+              </button>
+              <button onClick={() => {if(isSimulating) setIsSimulating(false); setTestMode('FDTD')}} style={{ flex: 1, padding: '6px', fontSize: '11px', border: 'none', background: testMode === 'FDTD' ? '#fff' : 'transparent', color: testMode === 'FDTD' ? '#000' : 'var(--text-secondary)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  FDTD (2D Wave)
+              </button>
+           </div>
+        </section>
+
+        {testMode === 'FDTD' && (
+           <section style={{ marginBottom: '20px', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+              <h4 style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '10px' }}>Analysis Plane Control</h4>
+              <div className="control-group" style={{ marginBottom: '15px' }}>
+                 <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Slice Elevation (Y-Axis)</label>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                     <input type="range" min="-2" max="2" step="0.05" value={fdtdPlaneY} onChange={e => setFdtdPlaneY(parseFloat(e.target.value))} style={{ flex: 1, accentColor: 'var(--accent-primary)' }} />
+                     <span style={{ fontSize: '12px', fontWeight: 'bold', width: '40px', color: 'var(--accent-primary)' }}>{fdtdPlaneY.toFixed(2)}m</span>
+                 </div>
+              </div>
+              <div className="control-group">
+                 <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Excitation Signal</label>
+                 <select className="input" value={fdtdMode} onChange={e => setFdtdMode(e.target.value as any)} style={{ width: '100%', borderRadius: '8px' }}>
+                    <option value="impulse">Gaussian Impulse (Broadband)</option>
+                    <option value="cw">Continuous Wave (500Hz Sine)</option>
+                 </select>
+              </div>
+           </section>
+        )}
+
+        <section style={{ marginBottom: '20px' }}>
           <h4 style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '10px' }}>Identity Output</h4>
           <div className="control-group" style={{ marginBottom: '10px' }}>
              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Asset Name</label>
@@ -301,22 +475,31 @@ export const SpeakerDesigner: React.FC = () => {
             <button 
                className="button primary" 
                onClick={runSandboxSimulation}
-               disabled={isSimulating}
-               style={{ gap: '8px', borderRadius: '20px', padding: '8px 24px', background: isSimulating ? 'var(--text-secondary)' : 'var(--accent-primary)', color: '#000', fontWeight: 'bold' }}
+               disabled={isSimulating && testMode !== 'FDTD'}
+               style={{ gap: '8px', borderRadius: '20px', padding: '8px 24px', background: isSimulating ? (testMode === 'FDTD' ? '#ff3333' : 'var(--text-secondary)') : 'var(--accent-primary)', color: isSimulating && testMode === 'FDTD' ? '#fff' : '#000', fontWeight: 'bold' }}
             >
-               {isSimulating ? `SIMULATING (${simProgress}%)` : <><Play size={16} fill="#000" /> RUN ACOUSTIC TEST</>}
+               {isSimulating ? (testMode === 'FDTD' ? 'STOP FDTD ENGINE' : `SIMULATING (${simProgress}%)`) : <><Play size={16} fill="#000" /> {testMode === 'RAYTRACE' ? 'RUN ACOUSTIC TEST' : 'START FDTD ENGINE'}</>}
             </button>
          </div>
 
-         <div style={{ position: 'absolute', top: '15px', right: '20px', zIndex: 10, textAlign: 'right' }}>
+         <div style={{ position: 'absolute', top: '15px', right: '20px', zIndex: 10, textAlign: 'right', pointerEvents: 'none' }}>
             <h3 style={{ fontSize: '14px', color: 'var(--text-primary)' }}>Micro Environment</h3>
-            <p style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Free-field Anechoic Space (1x1x1 Grid)</p>
+            <p style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Free-field Space (4x4m Bounding)</p>
          </div>
 
          <div className="glass-panel" style={{ width: '100%', height: '100%' }}>
             <Canvas shadows gl={{ antialias: true }} camera={{ position: [2, 2, 3], fov: 45 }}>
                <color attach="background" args={['#050508']} />
-               <SandboxRenderer objects={sandboxObjects} selectedId={selectedSandboxId} onSelect={setSelectedSandboxId} onUpdate={handleUpdateSandboxObj} />
+               <SandboxRenderer 
+                  objects={sandboxObjects} 
+                  selectedId={selectedSandboxId} 
+                  onSelect={setSelectedSandboxId} 
+                  onUpdate={handleUpdateSandboxObj}
+                  testMode={testMode}
+                  fdtdPlaneY={fdtdPlaneY}
+                  isFdtdRunning={isSimulating && testMode === 'FDTD'}
+                  pressureMapRef={pressureMapRef}
+               />
             </Canvas>
          </div>
       </div>
