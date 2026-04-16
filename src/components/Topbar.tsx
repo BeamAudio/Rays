@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { 
   Play, Save, Loader2, FolderOpen, Layout, PenTool, 
-  Activity, Camera, Layers, Zap, Globe, RotateCw, Menu, Settings
+  Activity, Camera, Layers, Zap, Globe, RotateCw, Menu, Settings, Maximize2
 } from 'lucide-react';
 import { useProjectStore } from '../state/project_state';
 import * as THREE from 'three';
@@ -21,6 +21,14 @@ export const Topbar: React.FC = () => {
 
   const toggleMobileMenu = (className: string) => {
     document.querySelector(className)?.classList.toggle('active');
+  };
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen();
+    }
   };
 
   const handleSaveProject = () => {
@@ -311,6 +319,13 @@ export const Topbar: React.FC = () => {
           style={{ padding: '6px 12px', fontSize: '11px', marginLeft: '4px', borderRadius: '40px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}
         >
           {isSimulating ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} fill="currentColor" />}
+          {isSimulating ? `${simulationProgress}%` : (window.innerWidth > 600 ? 'Compute' : 'Run')}
+        </button>
+      </div>
+    </div>
+  );
+};
+ntColor" />}
           {isSimulating ? `${simulationProgress}%` : (window.innerWidth > 600 ? 'Compute' : 'Run')}
         </button>
       </div>
