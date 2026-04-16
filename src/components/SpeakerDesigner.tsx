@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useProjectStore } from '../state/project_state';
 import type { SpeakerModel, DirectivityPattern, AcousticMaterial } from '../types';
 
-import { Save, PenTool, Activity, Share2, Code, Download, Speaker, Layers, Zap } from 'lucide-react';
+import { Save, PenTool, Activity, Share2, Code, Download, Layers, Zap } from 'lucide-react';
 import { Canvas } from '@react-three/fiber';
 import { BalloonVisualizer } from './BalloonVisualizer';
 import { NumericInput } from './NumericInput';
