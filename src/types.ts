@@ -52,7 +52,7 @@ export interface SceneObject {
   id: string;
   name: string;
   type: 'source' | 'receiver' | 'mesh' | 'plane';
-  shape: 'box' | 'sphere' | 'plane' | 'mesh';
+  shape: 'box' | 'sphere' | 'plane' | 'mesh' | 'cylinder' | 'tube' | 'trapezoid';
   position: [number, number, number];
   rotation: [number, number, number];
   scale: [number, number, number];

@@ -79,6 +79,9 @@ const SandboxObject: React.FC<{
       >
         {obj.shape === 'box' ? <boxGeometry args={[1, 1, 1]} /> : 
          obj.shape === 'sphere' ? <sphereGeometry args={[0.2, 16, 16]} /> : 
+         obj.shape === 'cylinder' ? <cylinderGeometry args={[0.5, 0.5, 1, 32]} /> :
+         obj.shape === 'tube' ? <cylinderGeometry args={[0.5, 0.5, 1, 32, 1, true]} /> :
+         obj.shape === 'trapezoid' ? <cylinderGeometry args={[0.3, 0.8, 1, 4]} /> :
          <planeGeometry args={[1, 1]} />}
 
         {obj.type === 'source' ? (
@@ -86,7 +89,7 @@ const SandboxObject: React.FC<{
         ) : obj.type === 'receiver' ? (
           <meshStandardMaterial color="#ff00ff" emissive="#ff00ff" emissiveIntensity={isSelected ? 1 : 0.5} wireframe />
         ) : (
-          <meshStandardMaterial color={isSelected ? "#FFF" : "#888"} opacity={0.8} transparent />
+          <meshStandardMaterial color={isSelected ? "#FFF" : "#888"} opacity={0.8} transparent side={THREE.DoubleSide} />
         )}
       </mesh>
     </group>
@@ -228,7 +231,7 @@ export const SpeakerDesigner: React.FC = () => {
     setSandboxObjects(prev => prev.map(o => o.id === id ? { ...o, ...updates } : o));
   };
 
-  const addSandboxPrimitive = (shape: 'box' | 'plane') => {
+  const addSandboxPrimitive = (shape: SceneObject['shape']) => {
     const newObj: SceneObject = {
       id: `sandbox_${Date.now()}`,
       name: `Custom ${shape}`,
@@ -264,19 +267,37 @@ export const SpeakerDesigner: React.FC = () => {
           for (const obj of objects) {
              if (obj.type !== 'mesh') continue;
              
-             // AABB intersection calculation
              const hx = obj.scale[0] / 2;
              const hy = obj.scale[1] / 2;
              const hz = obj.scale[2] / 2;
              
-             if (
-               px >= obj.position[0] - hx && px <= obj.position[0] + hx &&
-               pz >= obj.position[2] - hz && pz <= obj.position[2] + hz &&
-               planeY >= obj.position[1] - hy && planeY <= obj.position[1] + hy
-             ) {
-                isWall = true;
-                break;
+             // Ensure current elevation is within object's Y bounds
+             if (planeY < obj.position[1] - hy || planeY > obj.position[1] + hy) continue;
+
+             const dx_p = px - obj.position[0];
+             const dz_p = pz - obj.position[2];
+
+             if (obj.shape === 'box' || obj.shape === 'plane' || obj.shape === 'mesh') {
+                if (Math.abs(dx_p) <= hx && Math.abs(dz_p) <= hz) isWall = true;
              }
+             else if (obj.shape === 'cylinder') {
+                const r = Math.sqrt(dx_p*dx_p + dz_p*dz_p);
+                if (r <= hx) isWall = true; // Assumes scale X = scale Z
+             }
+             else if (obj.shape === 'tube') {
+                const r = Math.sqrt(dx_p*dx_p + dz_p*dz_p);
+                // Hollow tube thickness approx 15% of radius
+                if (r <= hx && r >= hx * 0.85) isWall = true;
+             }
+             else if (obj.shape === 'trapezoid') {
+                // Tapered bounding check
+                const yNormalized = (obj.position[1] + hy - planeY) / (hy * 2); // 0 at top, 1 at bottom
+                // scale tapers from 0.8 (bottom) to 0.3 (top), which is ratio 1.0 to 0.375
+                const taperFactor = 0.375 + (0.625 * yNormalized);
+                if (Math.abs(dx_p) <= hx * taperFactor && Math.abs(dz_p) <= hz * taperFactor) isWall = true;
+             }
+             
+             if (isWall) break;
           }
           if (isWall) walls[yi * nx + xi] = 1;
        }
@@ -364,8 +385,14 @@ export const SpeakerDesigner: React.FC = () => {
     // Fake the triangles for primitives to feed BVH worker correctly
     const workerObjects = sandboxObjects.map(obj => {
       if (obj.type === 'mesh') {
-         // Create a fake geometry just to extract triangles for the worker
-         const geom = obj.shape === 'box' ? new THREE.BoxGeometry(1,1,1) : new THREE.PlaneGeometry(1,1);
+         let geom: THREE.BufferGeometry;
+         if (obj.shape === 'box') { geom = new THREE.BoxGeometry(1, 1, 1); }
+         else if (obj.shape === 'plane') { geom = new THREE.PlaneGeometry(1, 1); }
+         else if (obj.shape === 'cylinder') { geom = new THREE.CylinderGeometry(0.5, 0.5, 1, 32); }
+         else if (obj.shape === 'tube') { geom = new THREE.CylinderGeometry(0.5, 0.5, 1, 32, 1, true); }
+         else if (obj.shape === 'trapezoid') { geom = new THREE.CylinderGeometry(0.3, 0.8, 1, 4); }
+         else { geom = new THREE.BoxGeometry(1, 1, 1); }
+         
          geom.scale(obj.scale[0], obj.scale[1], obj.scale[2]);
          geom.rotateX(obj.rotation[0]);
          geom.rotateY(obj.rotation[1]);
@@ -478,10 +505,10 @@ export const SpeakerDesigner: React.FC = () => {
            <h4 style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '10px' }}>Engine Mode</h4>
            <div style={{ display: 'flex', background: 'var(--bg-tertiary)', borderRadius: '8px', padding: '4px' }}>
               <button onClick={() => {if(isSimulating) stopFdtd(); setTestMode('RAYTRACE')}} style={{ flex: 1, padding: '6px', fontSize: '11px', border: 'none', background: testMode === 'RAYTRACE' ? '#fff' : 'transparent', color: testMode === 'RAYTRACE' ? '#000' : 'var(--text-secondary)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                  Ray Tracing (3D)
+                  Broadband (Ray)
               </button>
               <button onClick={() => {if(isSimulating) setIsSimulating(false); setTestMode('FDTD')}} style={{ flex: 1, padding: '6px', fontSize: '11px', border: 'none', background: testMode === 'FDTD' ? '#fff' : 'transparent', color: testMode === 'FDTD' ? '#000' : 'var(--text-secondary)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                  FDTD (2D Wave)
+                  Low Frequency (Wave)
               </button>
            </div>
         </section>
@@ -529,12 +556,21 @@ export const SpeakerDesigner: React.FC = () => {
 
         <section style={{ marginBottom: '20px', flex: 1 }}>
           <h4 style={{ fontSize: '10px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '10px' }}>Sandbox Construction</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
-             <button className="button" style={{ fontSize: '11px', gap: '6px' }} onClick={() => addSandboxPrimitive('box')}>
-               <PlusSquare size={14} /> Add Block
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '15px' }}>
+             <button className="button" style={{ fontSize: '10px', padding: '6px 0', gap: '4px', flexDirection: 'column' }} onClick={() => addSandboxPrimitive('box')}>
+               <PlusSquare size={14} /> Block
              </button>
-             <button className="button" style={{ fontSize: '11px', gap: '6px' }} onClick={() => addSandboxPrimitive('plane')}>
-               <PlusSquare size={14} /> Add Plate
+             <button className="button" style={{ fontSize: '10px', padding: '6px 0', gap: '4px', flexDirection: 'column' }} onClick={() => addSandboxPrimitive('plane')}>
+               <PlusSquare size={14} /> Plate
+             </button>
+             <button className="button" style={{ fontSize: '10px', padding: '6px 0', gap: '4px', flexDirection: 'column' }} onClick={() => addSandboxPrimitive('cylinder')}>
+               <PlusSquare size={14} /> Cylinder
+             </button>
+             <button className="button" style={{ fontSize: '10px', padding: '6px 0', gap: '4px', flexDirection: 'column' }} onClick={() => addSandboxPrimitive('tube')}>
+               <PlusSquare size={14} /> Hollow Tube
+             </button>
+             <button className="button" style={{ fontSize: '10px', padding: '6px 0', gap: '4px', flexDirection: 'column' }} onClick={() => addSandboxPrimitive('trapezoid')}>
+               <PlusSquare size={14} /> Trapezoid
              </button>
           </div>
           
