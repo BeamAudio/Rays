@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { useProjectStore } from '../state/project_state';
 import type { SceneObject, SpeakerModel, AcousticMaterial, SimulationResult } from '../types';
 import * as THREE from 'three';
-import { Save, PenTool, Activity, Share2, Code, Download, Speaker, Layers, Zap, PlusSquare, Play, Trash2, Maximize } from 'lucide-react';
+import { Save, Activity, Share2, Layers, Zap, PlusSquare, Play, Trash2, Maximize } from 'lucide-react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, TransformControls, Grid } from '@react-three/drei';
 import { SpectralEditor } from './SpectralEditor';
@@ -63,8 +63,6 @@ const SandboxObject: React.FC<{
     }
   };
 
-  const isTestHardware = obj.id === 'sandbox_src' || obj.id === 'sandbox_mic';
-
   return (
     <group>
       {isSelected && (
@@ -97,7 +95,6 @@ const SandboxObject: React.FC<{
 };
 
 const FdtdAnalysisPlane: React.FC<{ y: number, isRunning: boolean, pressureMapRef: React.MutableRefObject<Float32Array | null> }> = ({ y, isRunning, pressureMapRef }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const textureRef = useRef<THREE.CanvasTexture>(null);
   
   // Creates the canvas element dynamically if it doesn't exist
@@ -319,7 +316,7 @@ export const SpeakerDesigner: React.FC = () => {
     setIsSimulating(true);
     setSimProgress(0);
 
-    const nx = 200; const ny = 200; const size = 4;
+    const nx = 200; const ny = 200;
     const walls = generateFdtdWalls(sandboxObjects, fdtdPlaneY, nx, ny);
     
     fdtdWorkerRef.current = new Worker(new URL('../engine/fdtd_worker.ts', import.meta.url), { type: 'module' });
