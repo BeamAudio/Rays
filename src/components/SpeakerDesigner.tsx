@@ -145,6 +145,53 @@ const FdtdAnalysisPlane: React.FC<{ y: number, isRunning: boolean, pressureMapRe
   );
 };
 
+const BodePlot: React.FC<{ freqs: number[], mags: number[], phases: number[] }> = ({ freqs, mags, phases }) => {
+  if (freqs.length === 0) return <div style={{height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', color:'var(--text-secondary)'}}>No Impedance Data</div>;
+
+  const width = 360;
+  const height = 150;
+  const padding = 20;
+
+  const minF = 50;
+  const maxF = Math.max(...freqs, 2500);
+  const logRange = Math.log10(maxF) - Math.log10(minF);
+  const getX = (f: number) => padding + ((Math.log10(f) - Math.log10(minF)) / logRange) * (width - 2 * padding);
+
+  const maxM = Math.max(...mags);
+  const minM = Math.min(...mags);
+  const logMaxM = Math.log10(maxM);
+  const logMinM = Math.log10(Math.max(0.1, minM));
+  const rngM = Math.max(0.1, logMaxM - logMinM);
+  const getYMag = (m: number) => padding + (1 - (Math.log10(Math.max(0.1, m)) - logMinM) / rngM) * ((height - 2*padding)/2);
+
+  const pHeight = (height - 2*padding) / 2;
+  const getYPhase = (p: number) => padding + pHeight + (1 - (p + 180) / 360) * pHeight;
+
+  let magPath = `M ${getX(freqs[0])},${getYMag(mags[0])}`;
+  let phasePath = `M ${getX(freqs[0])},${getYPhase(phases[0])}`;
+  for (let i = 1; i < freqs.length; i++) {
+     magPath += ` L ${getX(freqs[i])},${getYMag(mags[i])}`;
+     phasePath += ` L ${getX(freqs[i])},${getYPhase(phases[i])}`;
+  }
+
+  return (
+     <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} style={{background: 'rgba(0,0,0,0.4)', borderRadius: '8px'}}>
+        <text x={padding} y={15} fill="#00ffff" fontSize="9">Magnitude (|Z|)</text>
+        <path d={magPath} fill="none" stroke="#00ffff" strokeWidth="1.5" />
+        
+        <line x1={padding} y1={padding+pHeight} x2={width-padding} y2={padding+pHeight} stroke="#333" strokeDasharray="4" />
+        
+        <text x={padding} y={padding+pHeight+12} fill="#ff00ff" fontSize="9">Phase (°)</text>
+        <path d={phasePath} fill="none" stroke="#ff00ff" strokeWidth="1" />
+        
+        {/* X Axis Labels */}
+        <text x={padding} y={height - 5} fill="#666" fontSize="8" textAnchor="middle">50Hz</text>
+        <text x={getX(1000)} y={height - 5} fill="#666" fontSize="8" textAnchor="middle">1kHz</text>
+        <text x={width - padding} y={height - 5} fill="#666" fontSize="8" textAnchor="middle">2.5kHz</text>
+     </svg>
+  );
+};
+
 export const SpeakerDesigner: React.FC = () => {
   const { installModel, installMaterial, setCurrentView } = useProjectStore();
   
@@ -162,6 +209,7 @@ export const SpeakerDesigner: React.FC = () => {
   const [fdtdMode, setFdtdMode] = useState<'impulse' | 'cw'>('impulse');
   const fdtdWorkerRef = useRef<Worker | null>(null);
   const pressureMapRef = useRef<Float32Array | null>(null);
+  const [bodeData, setBodeData] = useState<{ freqs: number[], mags: number[], phases: number[] } | null>(null);
 
   // —— Sandbox State ——
   const [sandboxObjects, setSandboxObjects] = useState<SceneObject[]>([
@@ -243,6 +291,38 @@ export const SpeakerDesigner: React.FC = () => {
         fdtdWorkerRef.current = null;
     }
     setIsSimulating(false);
+  };
+
+  const runImpedanceExtraction = () => {
+    if (isSimulating) stopFdtd();
+    setIsSimulating(true);
+    setSimProgress(0);
+
+    const nx = 200; const ny = 200; const size = 4;
+    const walls = generateFdtdWalls(sandboxObjects, fdtdPlaneY, nx, ny);
+    
+    fdtdWorkerRef.current = new Worker(new URL('../engine/fdtd_worker.ts', import.meta.url), { type: 'module' });
+    fdtdWorkerRef.current.onmessage = (e) => {
+        if (e.data.type === 'PROGRESS') {
+           setSimProgress(e.data.progress);
+        } else if (e.data.type === 'IMPEDANCE_RESULTS') {
+           setBodeData({
+              freqs: e.data.freqs,
+              mags: e.data.mags,
+              phases: e.data.phases
+           });
+           setIsSimulating(false);
+           if (fdtdWorkerRef.current) {
+              fdtdWorkerRef.current.terminate();
+              fdtdWorkerRef.current = null;
+           }
+        }
+    };
+
+    fdtdWorkerRef.current.postMessage({ 
+        type: 'INIT', 
+        payload: { nx, ny, walls, sourceX: 100, sourceY: 190, simMode: 'impedance', frequency: 500 } 
+    });
   };
 
   const runSandboxSimulation = () => {
@@ -416,13 +496,22 @@ export const SpeakerDesigner: React.FC = () => {
                      <span style={{ fontSize: '12px', fontWeight: 'bold', width: '40px', color: 'var(--accent-primary)' }}>{fdtdPlaneY.toFixed(2)}m</span>
                  </div>
               </div>
-              <div className="control-group">
+              <div className="control-group" style={{ marginBottom: '15px' }}>
                  <label style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Excitation Signal</label>
                  <select className="input" value={fdtdMode} onChange={e => setFdtdMode(e.target.value as any)} style={{ width: '100%', borderRadius: '8px' }}>
                     <option value="impulse">Gaussian Impulse (Broadband)</option>
                     <option value="cw">Continuous Wave (500Hz Sine)</option>
                  </select>
               </div>
+              
+              <button 
+                 className="button" 
+                 onClick={runImpedanceExtraction}
+                 disabled={isSimulating}
+                 style={{ width: '100%', fontSize: '10px', height: '30px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+              >
+                 <Activity size={12} /> EXTRACT IMPEDANCE (BODE)
+              </button>
            </section>
         )}
 
@@ -527,22 +616,38 @@ export const SpeakerDesigner: React.FC = () => {
             </div>
          </div>
 
-         <div style={{ padding: '20px', flex: 1 }}>
-            <h4 style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
-               <Activity size={14} color="var(--accent-primary)" /> Extracted Frequency Target
-            </h4>
-            
-            <div style={{ width: '100%', pointerEvents: 'none' }}>
-               {designerMode === 'source' ? (
-                  <SpectralEditor data={frequencyResponse} onChange={() => {}} mode="dB" minDb={-24} maxDb={24} />
-               ) : (
-                  <SpectralEditor data={absorption} onChange={() => {}} mode="coefficient" />
-               )}
+         {testMode === 'RAYTRACE' ? (
+            <div style={{ padding: '20px', flex: 1 }}>
+               <h4 style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+                  <Activity size={14} color="var(--accent-primary)" /> Extracted Frequency Target
+               </h4>
+               
+               <div style={{ width: '100%', pointerEvents: 'none' }}>
+                  {designerMode === 'source' ? (
+                     <SpectralEditor data={frequencyResponse} onChange={() => {}} mode="dB" minDb={-24} maxDb={24} />
+                  ) : (
+                     <SpectralEditor data={absorption} onChange={() => {}} mode="coefficient" />
+                  )}
+               </div>
+               <p style={{ fontSize: '9px', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '10px', fontStyle: 'italic' }}>
+                  Analytic data derived from micro-simulation.
+               </p>
             </div>
-            <p style={{ fontSize: '9px', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '10px', fontStyle: 'italic' }}>
-               Analytic data derived from micro-simulation.
-            </p>
-         </div>
+         ) : (
+            <div style={{ padding: '20px', flex: 1 }}>
+               <h4 style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px' }}>
+                  <Activity size={14} color="#ff00ff" /> Sample Impedance (Bode)
+               </h4>
+               
+               <div style={{ width: '100%' }}>
+                  <BodePlot freqs={bodeData?.freqs || []} mags={bodeData?.mags || []} phases={bodeData?.phases || []} />
+               </div>
+               
+               <p style={{ fontSize: '9px', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '10px', fontStyle: 'italic' }}>
+                  Low-frequency Acoustic Impedance Z(f) measured via FDTD Two-Mic method.
+               </p>
+            </div>
+         )}
       </div>
 
     </div>
