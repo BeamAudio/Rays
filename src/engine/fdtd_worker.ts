@@ -53,12 +53,15 @@ const config = {
   srcY: 100,
   mode: 'impulse' as 'impulse' | 'cw',
   freq: 500,
+  stepsPerFrame: 15,
+  dtScale: 1.0,
 };
 
 let stepCount    = 0;
 let lastPostTime = 0;
 let FFT_SIZE     = 8192;
 let CHUNK_SIZE   = 256;
+
 
 let p1_record: Float64Array;
 let p2_record: Float64Array;
@@ -165,12 +168,16 @@ self.onmessage = (e: MessageEvent) => {
   const { type } = e.data;
 
   if (type === 'INIT') {
-    const { nx, ny, walls, sourceX, sourceY, simMode, frequency, fftSize, chunkSize, domainSizeM } = e.data.payload;
+    const { nx, ny, walls, sourceX, sourceY, simMode, frequency, fftSize, chunkSize, domainSizeM, stepsPerFrame, dtScale } = e.data.payload;
 
     gridNx     = nx;
     gridNy     = ny;
     FFT_SIZE   = fftSize   || 8192;
     CHUNK_SIZE = chunkSize || 256;
+
+    config.stepsPerFrame = stepsPerFrame || 15;
+    config.dtScale       = dtScale       || 1.0;
+
 
     p0 = new Float32Array(nx * ny);
     p1 = new Float32Array(nx * ny);
@@ -187,7 +194,7 @@ self.onmessage = (e: MessageEvent) => {
     // PHYSICAL SYNC: Calculate dx from domain size and resolution
     const size = domainSizeM || 2.0; 
     config.dx = size / nx;
-    config.dt = config.dx / (config.c * Math.SQRT2); // CFL stability
+    config.dt = (config.dx / (config.c * Math.SQRT2)) * config.dtScale; // Scaled CFL stability
 
     // Build per-axis C-PML coefficient vectors
     const cx = buildPML(nx, config.dt, config.dx, config.c);
@@ -351,11 +358,9 @@ function finishImpedanceTest(): void {
 // ─── Live FDTD visualisation loop ────────────────────────────────────────────
 function loop(): void {
   if (!isRunning) return;
-
-  const STEPS     = 15;  // steps per animation frame
   const CourantSq = ((config.c * config.dt) / config.dx) ** 2;
 
-  for (let s = 0; s < STEPS; s++) {
+  for (let s = 0; s < config.stepsPerFrame; s++) {
     const t      = stepCount * config.dt;
     const srcIdx = config.srcY * gridNx + config.srcX;
 

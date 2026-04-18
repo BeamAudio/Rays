@@ -81,8 +81,10 @@ export function calculateMetrics(ir: ImpulseResponse, ambientNoiseSPL: number[] 
   const maxBroadband = Math.max(...broadband, 1e-12);
   metrics.etc = Array.from(broadband).map((e, i) => ({
     time: i * binSize,
-    energy: Math.max(-90, 10 * Math.log10(e / maxBroadband + 1e-12))
+    // Provide linear energy (0..1) for straightforward UI plotting
+    energy: e / maxBroadband
   }));
+
 
   metrics.energyGrid = energyGrid;
 

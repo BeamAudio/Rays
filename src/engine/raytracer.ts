@@ -376,9 +376,11 @@ export class RayTracer {
     if (source.directivity === 'cardioid') {
       // theta is angle relative to forward (Z+)
       const theta = Math.acos(THREE.MathUtils.clamp(localDir.z, -1, 1));
-      const atten = 0.5 * (1 + Math.cos(theta));
+      // Gain = 0.5(1+cos). Energy = Gain^2.
+      const atten = (0.5 * (1 + Math.cos(theta))) ** 2;
       return weights.map(w => w * atten);
     }
+
 
     if (source.directivity === 'custom' && source.directivityData) {
       const data = source.directivityData;

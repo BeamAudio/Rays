@@ -4,7 +4,7 @@ import type { SceneObject, SpeakerModel, AcousticMaterial, SimulationResult } fr
 import * as THREE from 'three';
 import {
   Save, Activity, Share2, Layers, Zap, PlusSquare, Play, Trash2,
-  Maximize, ArrowLeft, Settings, ChevronDown, ChevronUp, Terminal,
+  Maximize, ArrowLeft, Settings, Terminal,
   Move, RotateCw, Maximize2, Search, X,
 } from 'lucide-react';
 import { Canvas, useFrame } from '@react-three/fiber';
@@ -65,14 +65,16 @@ const SandboxRenderer: React.FC<{
   objects: SceneObject[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
-  onUpdate: (id: string, updates: Partial<SceneObject>) => void;
+  onUpdateObj: (id: string, updates: Partial<SceneObject>) => void;
   testMode: 'RAYTRACE' | 'FDTD';
-  fdtdPlaneY: number;
-  isFdtdRunning: boolean;
   pressureMapRef: React.MutableRefObject<Float32Array | null>;
+  isRunning: boolean;
+  sliceOffset: number;
+  sliceAxis: 'X' | 'Y' | 'Z';
+  nx: number;
   viewMode: '2D' | '3D';
   transformMode: TransformMode;
-}> = ({ objects, selectedId, onSelect, onUpdate, testMode, fdtdPlaneY, isFdtdRunning, pressureMapRef, viewMode, transformMode }) => (
+}> = ({ objects, selectedId, onSelect, onUpdateObj, testMode, pressureMapRef, isRunning, sliceOffset, sliceAxis, nx, viewMode, transformMode }) => (
   <>
     <ambientLight intensity={0.35} />
     <directionalLight position={[5, 8, 5]} intensity={1.1} castShadow />
@@ -84,17 +86,23 @@ const SandboxRenderer: React.FC<{
         obj={obj}
         isSelected={selectedId === obj.id}
         onSelect={() => onSelect(obj.id)}
-        onUpdate={onUpdate}
+        onUpdate={onUpdateObj}
         transformMode={transformMode}
       />
     ))}
     {viewMode === '2D' ? (
-      <OrthographicCamera makeDefault position={[0, fdtdPlaneY + 8, 0]} rotation={[-Math.PI / 2, 0, 0]} zoom={80} />
+      <OrthographicCamera makeDefault position={[0, sliceOffset + 8, 0]} rotation={[-Math.PI / 2, 0, 0]} zoom={80} />
     ) : (
       <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 1.7} />
     )}
     {testMode === 'FDTD' && (
-      <FdtdAnalysisPlane y={fdtdPlaneY} isRunning={isFdtdRunning} pressureMapRef={pressureMapRef} />
+      <FdtdAnalysisPlane
+        offset={sliceOffset}
+        axis={sliceAxis}
+        isRunning={isRunning}
+        pressureMapRef={pressureMapRef}
+        nx={nx}
+      />
     )}
     <mesh onPointerMissed={() => onSelect(null)}>
       <planeGeometry args={[100, 100]} />
@@ -165,28 +173,43 @@ const SandboxObject: React.FC<{
 };
 
 const FdtdAnalysisPlane: React.FC<{
-  y: number; isRunning: boolean; pressureMapRef: React.MutableRefObject<Float32Array | null>;
-}> = ({ y, isRunning, pressureMapRef }) => {
+  offset: number; axis: 'X' | 'Y' | 'Z'; isRunning: boolean; pressureMapRef: React.MutableRefObject<Float32Array | null>; nx: number;
+}> = ({ offset, axis, isRunning, pressureMapRef, nx }) => {
   const textureRef = useRef<THREE.CanvasTexture>(null);
   const memCanvas = useMemo(() => {
-    const c = document.createElement('canvas'); c.width = 200; c.height = 200; return c;
-  }, []);
+    const c = document.createElement('canvas'); c.width = nx; c.height = nx; return c;
+  }, [nx]);
 
   useFrame(() => {
     if (!isRunning || !pressureMapRef.current || !textureRef.current) return;
     const ctx = memCanvas.getContext('2d'); if (!ctx) return;
-    const imgData = ctx.createImageData(200, 200);
+    const imgData = ctx.createImageData(nx, nx);
     const buf = pressureMapRef.current;
-    for (let i = 0; i < 40000; i++) {
+    
+    // Check if buffer size matches nx * nx
+    if (buf.length < nx * nx) return;
+
+    for (let i = 0; i < nx * nx; i++) {
       const p = buf[i], val = Math.min(255, Math.max(0, Math.floor(Math.abs(p) * 2000)));
-      imgData.data[i*4]=p>0?val:0; imgData.data[i*4+1]=0; imgData.data[i*4+2]=p<0?val:0; imgData.data[i*4+3]=val>5?220:0;
+      imgData.data[i*4]=p>0?val:0; 
+      imgData.data[i*4+1]=0; 
+      imgData.data[i*4+2]=p<0?val:0; 
+      imgData.data[i*4+3]=val>5?220:0;
     }
     ctx.putImageData(imgData, 0, 0);
     textureRef.current.needsUpdate = true;
   });
 
+  const rotation: [number, number, number] = 
+    axis === 'X' ? [0, Math.PI / 2, 0] : 
+    axis === 'Y' ? [-Math.PI / 2, 0, 0] : [0, 0, 0];
+  
+  const position: [number, number, number] = 
+    axis === 'X' ? [offset, 0, 0] : 
+    axis === 'Y' ? [0, offset, 0] : [0, 0, offset];
+
   return (
-    <group position={[0, y, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+    <group position={position} rotation={rotation}>
       <mesh position={[0, 0, 0.01]}>
         <planeGeometry args={[4, 4]} />
         <meshBasicMaterial transparent side={THREE.DoubleSide} depthWrite={false}>
@@ -200,6 +223,7 @@ const FdtdAnalysisPlane: React.FC<{
     </group>
   );
 };
+
 
 // ─── Bode Plot ────────────────────────────────────────────────────────────────
 const BodePlot: React.FC<{ freqs: number[]; mags: number[]; phases: number[] }> = ({ freqs, mags, phases }) => {
@@ -434,20 +458,23 @@ const ObjectInspector: React.FC<{
               <NumField label="D" value={sc[2]} onChange={v => setSc(2, v)} step={0.01} min={0.001} max={20} />
             </>)}
             {(obj.shape === 'cylinder' || obj.shape === 'tube') && (<>
-              <NumField label="R" value={sc[0]} onChange={v => onUpdate({ scale: [Math.max(0.001,v), sc[1], Math.max(0.001,v)] })} step={0.01} min={0.001} max={10} />
-              <NumField label="H" value={sc[1]} onChange={v => setSc(1, v)} step={0.01} min={0.001} max={20} />
+              <NumField label="R" value={sc[0]} onChange={v => onUpdate({ scale: [Math.max(0.001, v), sc[1], Math.max(0.001, v)] })} step={0.01} min={0.001} max={10} />
+              <NumField label="H" value={sc[1]} onChange={v => onUpdate({ scale: [sc[0], Math.max(0.001, v), sc[2]] })} step={0.01} min={0.001} max={20} />
             </>)}
             {obj.shape === 'trapezoid' && (<>
-              <NumField label="W" value={sc[0]} onChange={v => onUpdate({ scale: [Math.max(0.001,v), sc[1], Math.max(0.001,v)] })} step={0.01} min={0.001} max={10} />
-              <NumField label="H" value={sc[1]} onChange={v => setSc(1, v)} step={0.01} min={0.001} max={20} />
+              <NumField label="W" value={sc[0]} onChange={v => onUpdate({ scale: [Math.max(0.001, v), sc[1], Math.max(0.001, v)] })} step={0.01} min={0.001} max={10} />
+              <NumField label="H" value={sc[1]} onChange={v => onUpdate({ scale: [sc[0], Math.max(0.001, v), sc[2]] })} step={0.01} min={0.001} max={20} />
             </>)}
             {obj.shape === 'plane' && (<>
-              <NumField label="W" value={sc[0]} onChange={v => setSc(0, v)} step={0.01} min={0.001} max={20} />
-              <NumField label="H" value={sc[1]} onChange={v => setSc(1, v)} step={0.01} min={0.001} max={20} />
+              <NumField label="W" value={sc[0]} onChange={v => onUpdate({ scale: [Math.max(0.001, v), sc[1], sc[2]] })} step={0.01} min={0.001} max={20} />
+              <NumField label="H" value={sc[1]} onChange={v => onUpdate({ scale: [sc[0], Math.max(0.001, v), sc[2]] })} step={0.01} min={0.001} max={20} />
             </>)}
+
             {obj.shape === 'sphere' && (
-              <NumField label="R" value={sc[0]} onChange={setScUniform} step={0.01} min={0.001} max={10} />
+              <NumField label="R" value={sc[0]} onChange={v => setScUniform(v)} step={0.01} min={0.001} max={10} />
             )}
+
+
           </div>
         </div>
       )}
@@ -514,6 +541,10 @@ export const SpeakerDesigner: React.FC = () => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [simProgress, setSimProgress]   = useState(0);
   const [simLog, setSimLog]             = useState<string[]>([]);
+  const [stepsPerFrame, setStepsPerFrame] = useState(15);
+  const [dtScale, setDtScale]           = useState(1.0);
+  const [sliceAxis, setSliceAxis]       = useState<'X' | 'Y' | 'Z'>('Y');
+
   const addLog = useCallback((msg: string) => {
     setSimLog(prev => [...prev.slice(-40), `${new Date().toLocaleTimeString('en', { hour12: false })}  ${msg}`]);
   }, []);
@@ -530,7 +561,6 @@ export const SpeakerDesigner: React.FC = () => {
   const [bodeData, setBodeData] = useState<{ freqs: number[]; mags: number[]; phases: number[] } | null>(null);
 
   // ── Accuracy ──
-  const [showAccuracy, setShowAccuracy] = useState(false);
   const [simAccuracy, setSimAccuracy]   = useState<SimAccuracy>({ gridRes: 200, domainSizeM: 4, fftSize: 8192 });
 
   // ── Sandbox objects ──
@@ -569,23 +599,48 @@ export const SpeakerDesigner: React.FC = () => {
   };
 
   // ── Wall rasterisation ──────────────────────────────────────────────────────
-  const generateWalls = (objects: SceneObject[], planeY: number, nx: number, ny: number, size: number): Uint8Array => {
+  const generateWalls = (objects: SceneObject[], offset: number, nx: number, ny: number, size: number, axis: 'X' | 'Y' | 'Z'): Uint8Array => {
     const walls = new Uint8Array(nx * ny);
-    const dx = size / nx, dy = size / ny;
+    const dx = size / nx;
+
     for (let yi = 0; yi < ny; yi++) {
       for (let xi = 0; xi < nx; xi++) {
-        const px = (xi * dx) - size / 2 + dx / 2, pz = (yi * dy) - size / 2 + dy / 2;
+        // Calculate 3D pick-point based on 2D grid indices and slice axis
+        let px = 0, py = 0, pz = 0;
+        const coord1 = -size / 2 + xi * dx;
+        const coord2 = -size / 2 + yi * dx;
+
+        if (axis === 'X') { px = offset; py = coord2; pz = coord1; }
+        else if (axis === 'Y') { px = coord1; py = offset; pz = coord2; }
+        else { px = coord1; py = coord2; pz = offset; }
+
         for (const obj of objects) {
           if (obj.type !== 'mesh') continue;
-          const hx = obj.scale[0]/2, hy = obj.scale[1]/2, hz = obj.scale[2]/2;
-          if (planeY < obj.position[1]-hy || planeY > obj.position[1]+hy) continue;
-          const dpx = px - obj.position[0], dpz = pz - obj.position[2];
+          const hx = obj.scale[0] / 2, hy = obj.scale[1] / 2, hz = obj.scale[2] / 2;
+          
+          // Check if slice plane intersects the object along the normal axis
+          if (axis === 'X' && (offset < obj.position[0] - hx || offset > obj.position[0] + hx)) continue;
+          if (axis === 'Y' && (offset < obj.position[1] - hy || offset > obj.position[1] + hy)) continue;
+          if (axis === 'Z' && (offset < obj.position[2] - hz || offset > obj.position[2] + hz)) continue;
+
+          // Local hit test in the other two axes
+          const dx_ = px - obj.position[0], dy_ = py - obj.position[1], dz_ = pz - obj.position[2];
           let hit = false;
-          if (obj.shape === 'box' || obj.shape === 'plane') hit = Math.abs(dpx)<=hx && Math.abs(dpz)<=hz;
-          else if (obj.shape === 'cylinder') hit = Math.sqrt(dpx*dpx+dpz*dpz) <= hx;
-          else if (obj.shape === 'tube') { const r=Math.sqrt(dpx*dpx+dpz*dpz); hit=r<=hx && r>=hx*0.85; }
-          else if (obj.shape === 'trapezoid') { const yN=(obj.position[1]+hy-planeY)/(hy*2), tf=0.375+0.625*yN; hit=Math.abs(dpx)<=hx*tf && Math.abs(dpz)<=hz*tf; }
-          if (hit) { walls[yi*nx+xi]=1; break; }
+          
+          if (obj.shape === 'box' || obj.shape === 'plane') {
+            hit = Math.abs(dx_) <= hx && Math.abs(dy_) <= hy && Math.abs(dz_) <= hz;
+          } else if (obj.shape === 'cylinder' || obj.shape === 'tube') {
+            const distSq = dx_ * dx_ + dz_ * dz_;
+            const rSq = hx * hx;
+            hit = distSq <= rSq && Math.abs(dy_) <= hy;
+            if (obj.shape === 'tube') hit = hit && distSq >= rSq * 0.7;
+          } else if (obj.shape === 'trapezoid') {
+            const yN = (obj.position[1] + hy - py) / (hy * 2);
+            const tf = 0.375 + 0.625 * yN;
+            hit = Math.abs(dx_) <= hx * tf && Math.abs(dz_) <= hz * tf && Math.abs(dy_) <= hy;
+          }
+
+          if (hit) { walls[yi * nx + xi] = 1; break; }
         }
       }
     }
@@ -608,7 +663,7 @@ export const SpeakerDesigner: React.FC = () => {
     const { gridRes: nx, domainSizeM, fftSize } = simAccuracy;
     const chunkSize = fftSize === 4096 ? 512 : fftSize === 8192 ? 256 : 128;
     addLog(`▶ Impedance — ${nx}×${nx} · ${domainSizeM}m · ${fftSize}-pt FFT`);
-    const walls = generateWalls(sandboxObjects, fdtdPlaneY, nx, nx, domainSizeM);
+    const walls = generateWalls(sandboxObjects, fdtdPlaneY, nx, nx, domainSizeM, sliceAxis);
     fdtdWorkerRef.current = new Worker(new URL('../engine/fdtd_worker.ts', import.meta.url), { type: 'module' });
     fdtdWorkerRef.current.onmessage = (e) => {
       if (e.data.type === 'PROGRESS') { setSimProgress(e.data.progress); if (e.data.progress%10===0&&e.data.progress>0) addLog(`FDTD  ${String(e.data.progress).padStart(3)}%`); }
@@ -619,7 +674,7 @@ export const SpeakerDesigner: React.FC = () => {
         fdtdWorkerRef.current?.terminate(); fdtdWorkerRef.current = null;
       }
     };
-    fdtdWorkerRef.current.postMessage({ type:'INIT', payload:{ nx, ny:nx, walls, sourceX:Math.floor(nx/2), sourceY:Math.floor(nx*0.95), simMode:'impedance', frequency:500, fftSize, chunkSize, domainSizeM } });
+    fdtdWorkerRef.current.postMessage({ type:'INIT', payload:{ nx, ny:nx, walls, sourceX:Math.floor(nx/2), sourceY:Math.floor(nx*0.95), simMode:'impedance', frequency:500, fftSize, chunkSize, domainSizeM, stepsPerFrame, dtScale } });
   };
 
   // ── Run simulation ─────────────────────────────────────────────────────────
@@ -629,16 +684,24 @@ export const SpeakerDesigner: React.FC = () => {
       setIsSimulating(true);
       const { gridRes: nx, domainSizeM: size } = simAccuracy;
       addLog(`▶ FDTD wave — ${nx}×${nx} · ${size}m · ${fdtdMode}`);
-      const walls = generateWalls(sandboxObjects, fdtdPlaneY, nx, nx, size);
+      const walls = generateWalls(sandboxObjects, fdtdPlaneY, nx, nx, size, sliceAxis);
       const src = sandboxObjects.find(o => o.id === 'sandbox_src');
       let srcX = Math.floor(nx/2), srcY = Math.floor(nx/2);
-      if (src) { srcX=Math.max(1,Math.min(nx-2,Math.floor(((src.position[0]+size/2)/size)*nx))); srcY=Math.max(1,Math.min(nx-2,Math.floor(((src.position[2]+size/2)/size)*nx))); }
+      if (src) {
+        // Calculate source projection onto the 2D grid based on selected axis
+        const sP = src.position;
+        if (sliceAxis === 'X') { srcX = ((sP[2] + size/2) / size) * nx; srcY = ((sP[1] + size/2) / size) * nx; }
+        else if (sliceAxis === 'Y') { srcX = ((sP[0] + size/2) / size) * nx; srcY = ((sP[2] + size/2) / size) * nx; }
+        else { srcX = ((sP[0] + size/2) / size) * nx; srcY = ((sP[1] + size/2) / size) * nx; }
+        srcX = Math.max(15, Math.min(nx-15, Math.floor(srcX)));
+        srcY = Math.max(15, Math.min(nx-15, Math.floor(srcY)));
+      }
       fdtdWorkerRef.current = new Worker(new URL('../engine/fdtd_worker.ts', import.meta.url), { type: 'module' });
       fdtdWorkerRef.current.onmessage = (e) => {
         if (e.data.type === 'RENDER') pressureMapRef.current = new Float32Array(e.data.pressureMap);
         else if (e.data.type === 'LOG') addLog(e.data.message);
       };
-      fdtdWorkerRef.current.postMessage({ type:'INIT', payload:{ nx, ny:nx, walls, sourceX:srcX, sourceY:srcY, simMode:fdtdMode, frequency:500, fftSize:simAccuracy.fftSize, chunkSize:256, domainSizeM:size } });
+      fdtdWorkerRef.current.postMessage({ type:'INIT', payload:{ nx, ny:nx, walls, sourceX:srcX, sourceY:srcY, simMode:fdtdMode, frequency:500, fftSize:simAccuracy.fftSize, chunkSize:256, domainSizeM:size, stepsPerFrame, dtScale } });
       return;
     }
     setIsSimulating(true); setSimProgress(0); addLog('▶ Raytracer — 15k rays · 5 bounces');
@@ -743,58 +806,63 @@ export const SpeakerDesigner: React.FC = () => {
           {/* FDTD controls */}
           {testMode === 'FDTD' && (
             <div style={{ background:'var(--bg-tertiary)', borderRadius:'8px', padding:'12px', marginBottom:'14px' }}>
-              <div style={{ ...secLabel, marginBottom:'5px' }}>Analysis Plane — Y Slice</div>
+              <div style={secLabel}><Maximize size={9} />Analysis Plane</div>
+              <div style={{ display:'flex', background:'var(--bg-primary)', borderRadius:'4px', padding:'2px', marginBottom:'10px' }}>
+                {(['X','Y','Z'] as const).map(a => (
+                  <button key={a} onClick={() => setSliceAxis(a)} style={{ flex:1, padding:'4px 0', border:'none', cursor:'pointer', borderRadius:'3px', background:sliceAxis===a?'var(--accent-primary)':'transparent', color:sliceAxis===a?'#000':'var(--text-tertiary)', fontSize:'9px', fontWeight:'800' }}>{a}</button>
+                ))}
+              </div>
+
+              <div style={{ ...secLabel, marginBottom:'5px' }}>Plane Offset (M)</div>
               <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px' }}>
-                <input type="range" min="-2" max="2" step="0.05" value={fdtdPlaneY} onChange={e=>setFdtdPlaneY(parseFloat(e.target.value))} style={{ flex:1, accentColor:'var(--accent-primary)' }} />
+                <input type="range" min="-3" max="3" step="0.05" value={fdtdPlaneY} onChange={e=>setFdtdPlaneY(parseFloat(e.target.value))} style={{ flex:1, accentColor:'var(--accent-primary)' }} />
                 <span style={{ fontSize:'10px', fontWeight:'700', color:'var(--accent-primary)', fontFamily:'monospace', minWidth:'40px' }}>{fdtdPlaneY.toFixed(2)}m</span>
               </div>
+
+              <div style={divider} />
+
+              <div style={secLabel}><Activity size={9} />Simulation Speed</div>
+              <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'10px' }}>
+                <input type="range" min="1" max="60" step="1" value={stepsPerFrame} onChange={e=>setStepsPerFrame(parseInt(e.target.value))} style={{ flex:1, accentColor:'var(--accent-primary)' }} />
+                <span style={{ fontSize:'10px', color:'var(--text-secondary)', minWidth:'45px' }}>{stepsPerFrame}×</span>
+              </div>
+
+              <div style={secLabel}><Zap size={9} />Time Resolution</div>
+              <div style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'12px' }}>
+                <input type="range" min="0.1" max="1.0" step="0.1" value={dtScale} onChange={e=>setDtScale(parseFloat(e.target.value))} style={{ flex:1, accentColor:'var(--accent-primary)' }} />
+                <span style={{ fontSize:'10px', color:'var(--text-secondary)', minWidth:'45px' }}>{dtScale.toFixed(1)} <span style={{ fontSize:'8px', opacity:0.6 }}>CFL</span></span>
+              </div>
+
+              <div style={divider} />
+
               <div style={{ ...secLabel, marginBottom:'5px' }}>Excitation Signal</div>
               <select value={fdtdMode} onChange={e=>setFdtdMode(e.target.value as any)} style={{ width:'100%', background:'var(--bg-secondary)', border:'1px solid var(--border-color)', color:'#fff', borderRadius:'5px', padding:'6px 8px', fontSize:'9px', marginBottom:'12px' }}>
                 <option value="impulse">Gaussian Impulse (Broadband)</option>
                 <option value="cw">Continuous Wave — 500 Hz Sine</option>
               </select>
-              <div style={{ borderTop:'1px solid var(--border-color)', paddingTop:'10px' }}>
-                <button onClick={() => setShowAccuracy(v=>!v)} style={{ width:'100%', background:'transparent', border:'none', color:'var(--text-secondary)', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px', fontSize:'9px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.1em', paddingBottom: showAccuracy?'10px':'0' }}>
-                  <Settings size={9} /> Accuracy Settings
-                  <span style={{ marginLeft:'auto' }}>{showAccuracy?<ChevronUp size={10}/>:<ChevronDown size={10}/>}</span>
-                </button>
-                {showAccuracy && (
-                  <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
-                    <div>
-                      <div style={{ ...secLabel, marginBottom:'5px' }}>Grid Resolution</div>
-                      <div style={{ display:'flex', gap:'4px' }}>
-                        {([100,200,300] as const).map(r=>(
-                          <button key={r} onClick={()=>setSimAccuracy(s=>({...s,gridRes:r}))} style={{ flex:1, padding:'5px 0', border:'1px solid var(--border-color)', cursor:'pointer', borderRadius:'4px', background:simAccuracy.gridRes===r?'var(--accent-primary)':'transparent', color:simAccuracy.gridRes===r?'#000':'var(--text-secondary)', fontSize:'9px', fontWeight:'700' }}>
-                            {r===100?'Low':r===200?'Med':'High'}
-                          </button>
-                        ))}
-                      </div>
-                      <div style={{ fontSize:'8px', color:'var(--text-tertiary)', marginTop:'3px' }}>{simAccuracy.gridRes}×{simAccuracy.gridRes} · dx = {dx_cm} cm</div>
-                    </div>
-                    <div>
-                      <div style={{ ...secLabel, marginBottom:'5px' }}>Domain</div>
-                      <div style={{ display:'flex', gap:'4px' }}>
-                        {([2,4,8] as const).map(d=>(
-                          <button key={d} onClick={()=>setSimAccuracy(s=>({...s,domainSizeM:d}))} style={{ flex:1, padding:'5px 0', border:'1px solid var(--border-color)', cursor:'pointer', borderRadius:'4px', background:simAccuracy.domainSizeM===d?'var(--accent-primary)':'transparent', color:simAccuracy.domainSizeM===d?'#000':'var(--text-secondary)', fontSize:'9px', fontWeight:'700' }}>{d}m</button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ ...secLabel, marginBottom:'5px' }}>Analysis Length (Bode)</div>
-                      <select value={simAccuracy.fftSize} onChange={e=>setSimAccuracy(s=>({...s,fftSize:parseInt(e.target.value) as any}))} style={{ width:'100%', background:'var(--bg-secondary)', border:'1px solid var(--border-color)', color:'#fff', borderRadius:'5px', padding:'6px 8px', fontSize:'9px' }}>
-                        <option value={4096}>4 096 pts — Δf ≈ 50 Hz  (Fast)</option>
-                        <option value={8192}>8 192 pts — Δf ≈ 25 Hz  (Balanced)</option>
-                        <option value={16384}>16 384 pts — Δf ≈ 12 Hz  (Precise)</option>
-                      </select>
-                    </div>
-                    <button className="button" onClick={runImpedanceExtraction} disabled={isSimulating} style={{ fontSize:'9px', height:'28px', background:'rgba(0,229,255,0.06)', borderColor:'rgba(0,229,255,0.25)', color:'#00e5ff' }}>
-                      <Activity size={10} /> Extract Impedance (Bode)
-                    </button>
-                  </div>
-                )}
+
+              <div style={{ ...secLabel, marginBottom:'5px' }}>Grid Resolution</div>
+              <div style={{ display:'flex', gap:'4px', marginBottom:'10px' }}>
+                {([100,200,300] as const).map(r=>(
+                  <button key={r} onClick={()=>setSimAccuracy(s=>({...s,gridRes:r}))} style={{ flex:1, padding:'5px 0', border:'1px solid var(--border-color)', cursor:'pointer', borderRadius:'4px', background:simAccuracy.gridRes===r?'var(--accent-primary)':'transparent', color:simAccuracy.gridRes===r?'#000':'var(--text-secondary)', fontSize:'9px', fontWeight:'700' }}>
+                    {r===100?'Low':r===200?'Med':'High'}
+                  </button>
+                ))}
               </div>
+
+              <div style={{ ...secLabel, marginBottom:'5px' }}>Analysis Length (Bode)</div>
+              <select value={simAccuracy.fftSize} onChange={e=>setSimAccuracy(s=>({...s,fftSize:parseInt(e.target.value) as any}))} style={{ width:'100%', background:'var(--bg-secondary)', border:'1px solid var(--border-color)', color:'#fff', borderRadius:'5px', padding:'6px 8px', fontSize:'9px', marginBottom:'12px' }}>
+                <option value={4096}>4 096 pts — Δf ≈ 50 Hz</option>
+                <option value={8192}>8 192 pts — Δf ≈ 25 Hz</option>
+                <option value={16384}>16 384 pts — Δf ≈ 12 Hz</option>
+              </select>
+
+              <button className="button" onClick={runImpedanceExtraction} disabled={isSimulating} style={{ width:'100%', fontSize:'9px', height:'28px', background:'rgba(0,229,255,0.06)', borderColor:'rgba(0,229,255,0.25)', color:'#00e5ff' }}>
+                <Activity size={10} /> Extract Impedance (Bode)
+              </button>
             </div>
           )}
+
 
           <div style={divider} />
 
@@ -908,17 +976,21 @@ export const SpeakerDesigner: React.FC = () => {
           ))}
         </div>
 
+        {/* Viewport content */}
+
         <Canvas shadows gl={{ antialias:true }} camera={{ position:viewMode==='2D'?[0,8,0]:[2.5,2,3.5], fov:45, up:[0,1,0] }} style={{ width:'100%', height:'100%' }}>
           <color attach="background" args={['#050508']} />
           <SandboxRenderer
             objects={sandboxObjects}
             selectedId={selectedSandboxId}
             onSelect={setSelectedSandboxId}
-            onUpdate={handleUpdateObj}
+            onUpdateObj={handleUpdateObj}
             testMode={testMode}
-            fdtdPlaneY={fdtdPlaneY}
-            isFdtdRunning={isSimulating && testMode==='FDTD'}
             pressureMapRef={pressureMapRef}
+            isRunning={isSimulating && testMode === 'FDTD'}
+            sliceOffset={fdtdPlaneY}
+            sliceAxis={sliceAxis}
+            nx={simAccuracy.gridRes}
             viewMode={viewMode}
             transformMode={transformMode}
           />
