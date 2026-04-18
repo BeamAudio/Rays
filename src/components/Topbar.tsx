@@ -7,7 +7,6 @@ import { useProjectStore } from '../state/project_state';
 import * as THREE from 'three';
 import SimulationWorker from '../engine/simulation_worker?worker';
 import { auralizer } from '../engine/auralizer';
-import logoSrc from '../assets/logo.jpg';
 
 export const Topbar: React.FC = () => {
   const {
@@ -188,8 +187,8 @@ export const Topbar: React.FC = () => {
 
   return (
     <div className="topbar">
-      <div className="logo" style={{ minWidth: '120px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setCurrentView('WORKSPACE')}>
-        <img src={logoSrc} alt="Beam Audio" style={{ height: '32px', width: 'auto', borderRadius: '6px', objectFit: 'contain' }} />
+      <div className="logo" style={{ minWidth: '160px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }} onClick={() => setCurrentView('WORKSPACE')}>
+        BEAM <span style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>AUDIO</span> RAYS
       </div>
 
       <div style={{ display: 'flex', gap: '8px', background: 'rgba(0,0,0,0.2)', padding: '2px', borderRadius: '6px' }}>
