@@ -359,13 +359,17 @@ export class RayTracer {
         for (let f = 0; f < 24; f++) energy[f] *= atten;
       }
 
-      // Reflection
+      // Reflection & Normal Handling
+      // Flip normal if we hit from behind (for double-sided geometry like tubes)
+      const actualNormal = hit.normal.clone();
+      if (currentRay.direction.dot(actualNormal) > 0) actualNormal.multiplyScalar(-1);
+
       const isSpecular = Math.random() > (obj.material.scattering || 0.1);
       const nextDir = isSpecular 
-        ? currentRay.direction.clone().reflect(hit.normal)
-        : this.getRandomHemisphereDirection(hit.normal);
+        ? currentRay.direction.clone().reflect(actualNormal)
+        : this.getRandomHemisphereDirection(actualNormal);
 
-      currentRay.origin.copy(hit.point).addScaledVector(hit.normal, 0.001); // Offset to avoid self-intersection
+      currentRay.origin.copy(hit.point).addScaledVector(actualNormal, 0.001); // Offset along the reflection normal
       currentRay.direction.copy(nextDir);
 
       if (energy.every(e => e < 0.001)) break;

@@ -636,25 +636,36 @@ export const SpeakerDesigner: React.FC = () => {
           const hx = obj.scale[0] / 2, hy = obj.scale[1] / 2, hz = obj.scale[2] / 2;
           
           // Check if slice plane intersects the object along the normal axis
-          if (axis === 'X' && (offset < obj.position[0] - hx || offset > obj.position[0] + hx)) continue;
-          if (axis === 'Y' && (offset < obj.position[1] - hy || offset > obj.position[1] + hy)) continue;
+          if (axis === 'X' && (offset < obj.position[0] - hx*2 || offset > obj.position[0] + hx*2)) continue;
+          if (axis === 'Y' && (offset < obj.position[1] - hy*2 || offset > obj.position[1] + hy*2)) continue;
           if (axis === 'Z' && (offset < obj.position[2] - hz || offset > obj.position[2] + hz)) continue;
 
-          // Local hit test in the other two axes
-          const dx_ = px - obj.position[0], dy_ = py - obj.position[1], dz_ = pz - obj.position[2];
-          let hit = false;
+          // Transform point to local space: P_local = R^-1 * (P_world - P_obj)
+          const rx = -obj.rotation[0], ry = -obj.rotation[1], rz = -obj.rotation[2];
+          let lx = px - obj.position[0], ly = py - obj.position[1], lz = pz - obj.position[2];
           
+          // Rotate Z
+          let s = Math.sin(rz), c = Math.cos(rz), tx = lx * c - ly * s, ty = lx * s + ly * c;
+          lx = tx; ly = ty;
+          // Rotate Y
+          s = Math.sin(ry); c = Math.cos(ry); tx = lx * c + lz * s; let tz = -lx * s + lz * c;
+          lx = tx; lz = tz;
+          // Rotate X
+          s = Math.sin(rx); c = Math.cos(rx); ty = ly * c - lz * s; tz = ly * s + lz * c;
+          ly = ty; lz = tz;
+
+          let hit = false;
           if (obj.shape === 'box' || obj.shape === 'plane') {
-            hit = Math.abs(dx_) <= hx && Math.abs(dy_) <= hy && Math.abs(dz_) <= hz;
+            hit = Math.abs(lx) <= hx && Math.abs(ly) <= hy && Math.abs(lz) <= hz;
           } else if (obj.shape === 'cylinder' || obj.shape === 'tube') {
-            const distSq = dx_ * dx_ + dz_ * dz_;
+            const distSq = lx * lx + lz * lz; // r^2 in local XZ plane
             const rSq = hx * hx;
-            hit = distSq <= rSq && Math.abs(dy_) <= hy;
-            if (obj.shape === 'tube') hit = hit && distSq >= rSq * 0.7;
+            hit = distSq <= rSq && Math.abs(ly) <= hy;
+            if (obj.shape === 'tube') hit = hit && distSq >= rSq * 0.6; // Slightly thicker wall (0.6 rSq)
           } else if (obj.shape === 'trapezoid') {
-            const yN = (obj.position[1] + hy - py) / (hy * 2);
+            const yN = (ly + hy) / (hy * 2);
             const tf = 0.375 + 0.625 * yN;
-            hit = Math.abs(dx_) <= hx * tf && Math.abs(dz_) <= hz * tf && Math.abs(dy_) <= hy;
+            hit = Math.abs(lx) <= hx * tf && Math.abs(lz) <= hz * tf && Math.abs(ly) <= hy;
           }
 
           if (hit) { walls[yi * nx + xi] = 1; break; }
