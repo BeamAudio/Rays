@@ -619,7 +619,7 @@ export const SpeakerDesigner: React.FC = () => {
         fdtdWorkerRef.current?.terminate(); fdtdWorkerRef.current = null;
       }
     };
-    fdtdWorkerRef.current.postMessage({ type:'INIT', payload:{ nx, ny:nx, walls, sourceX:Math.floor(nx/2), sourceY:Math.floor(nx*0.95), simMode:'impedance', frequency:500, fftSize, chunkSize } });
+    fdtdWorkerRef.current.postMessage({ type:'INIT', payload:{ nx, ny:nx, walls, sourceX:Math.floor(nx/2), sourceY:Math.floor(nx*0.95), simMode:'impedance', frequency:500, fftSize, chunkSize, domainSizeM } });
   };
 
   // ── Run simulation ─────────────────────────────────────────────────────────
@@ -638,7 +638,7 @@ export const SpeakerDesigner: React.FC = () => {
         if (e.data.type === 'RENDER') pressureMapRef.current = new Float32Array(e.data.pressureMap);
         else if (e.data.type === 'LOG') addLog(e.data.message);
       };
-      fdtdWorkerRef.current.postMessage({ type:'INIT', payload:{ nx, ny:nx, walls, sourceX:srcX, sourceY:srcY, simMode:fdtdMode, frequency:500, fftSize:simAccuracy.fftSize, chunkSize:256 } });
+      fdtdWorkerRef.current.postMessage({ type:'INIT', payload:{ nx, ny:nx, walls, sourceX:srcX, sourceY:srcY, simMode:fdtdMode, frequency:500, fftSize:simAccuracy.fftSize, chunkSize:256, domainSizeM:size } });
       return;
     }
     setIsSimulating(true); setSimProgress(0); addLog('▶ Raytracer — 15k rays · 5 bounces');

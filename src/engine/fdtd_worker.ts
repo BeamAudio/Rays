@@ -165,7 +165,7 @@ self.onmessage = (e: MessageEvent) => {
   const { type } = e.data;
 
   if (type === 'INIT') {
-    const { nx, ny, walls, sourceX, sourceY, simMode, frequency, fftSize, chunkSize } = e.data.payload;
+    const { nx, ny, walls, sourceX, sourceY, simMode, frequency, fftSize, chunkSize, domainSizeM } = e.data.payload;
 
     gridNx     = nx;
     gridNy     = ny;
@@ -184,8 +184,10 @@ self.onmessage = (e: MessageEvent) => {
     p2_record  = new Float64Array(FFT_SIZE);
     boundaryMap = walls;
 
-    config.dx = 0.02;
-    config.dt = config.dx / (config.c * Math.SQRT2); // CFL stable for 2D
+    // PHYSICAL SYNC: Calculate dx from domain size and resolution
+    const size = domainSizeM || 2.0; 
+    config.dx = size / nx;
+    config.dt = config.dx / (config.c * Math.SQRT2); // CFL stability
 
     // Build per-axis C-PML coefficient vectors
     const cx = buildPML(nx, config.dt, config.dx, config.c);
@@ -204,26 +206,25 @@ self.onmessage = (e: MessageEvent) => {
 
     stepCount = 0; isRunning = true;
 
-    const interior = (nx - 2*NPML) * (ny - 2*NPML);
     self.postMessage({ type: 'LOG',
-      message: `FDTD init ${nx}×${ny} · PML=${NPML} cells · dx=${(config.dx*100).toFixed(1)}cm · interior=${interior} cells · R₀=${R0}` });
+      message: `FDTD sync: ${nx}² · dx=${(config.dx*100).toFixed(2)}cm · dt=${(config.dt*1e6).toFixed(1)}μs · R₀=${R0}` });
 
     if (simMode === 'impedance') {
-      // Two-mic impedance tube — place source near bottom interior edge,
-      // mics between source and the top of the domain (sample face).
+      // Two-mic impedance tube — s and x1 distances are now physically relative
       const srcYimp = ny - NPML - 5;
       config.srcY   = srcYimp;
-      const mic1Y   = srcYimp - 30;   // 30 cells above source (closer to source)
-      const mic2Y   = srcYimp - 35;   // 35 cells above source (farther, near sample)
+      const mic1Y   = srcYimp - 30;   // 30 cells
+      const mic2Y   = srcYimp - 35;   // 35 cells
       mic1_loc = mic1Y * nx + config.srcX;
       mic2_loc = mic2Y * nx + config.srcX;
       self.postMessage({ type: 'LOG',
-        message: `Impedance tube — src@y=${srcYimp} · mic1@y=${mic1Y} · mic2@y=${mic2Y} · s=${(5*config.dx*100).toFixed(0)}cm` });
+        message: `Impedance tube — mics@y=${mic1Y},${mic2Y} · s=${(5*config.dx*100).toFixed(1)}cm` });
       runImpedanceTest();
     } else {
       loop();
     }
   }
+
 
   if (type === 'STOP') {
     isRunning = false;
