@@ -8,7 +8,7 @@ import {
   Move, RotateCw, Maximize2, Search, X,
 } from 'lucide-react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, TransformControls, Grid, OrthographicCamera } from '@react-three/drei';
+import { OrbitControls, TransformControls, Grid, OrthographicCamera, Line } from '@react-three/drei';
 import { SpectralEditor } from './SpectralEditor';
 import { MATERIALS_LIBRARY, MATERIAL_CATEGORIES, avgAlpha } from '../engine/materials_library';
 
@@ -74,7 +74,8 @@ const SandboxRenderer: React.FC<{
   nx: number;
   viewMode: '2D' | '3D';
   transformMode: TransformMode;
-}> = ({ objects, selectedId, onSelect, onUpdateObj, testMode, pressureMapRef, isRunning, sliceOffset, sliceAxis, nx, viewMode, transformMode }) => (
+  simRays: any[];
+}> = ({ objects, selectedId, onSelect, onUpdateObj, testMode, pressureMapRef, isRunning, sliceOffset, sliceAxis, nx, viewMode, transformMode, simRays }) => (
   <>
     <ambientLight intensity={0.35} />
     <directionalLight position={[5, 8, 5]} intensity={1.1} castShadow />
@@ -90,6 +91,21 @@ const SandboxRenderer: React.FC<{
         transformMode={transformMode}
       />
     ))}
+    {/* Ray Rendering */}
+    {testMode === 'RAYTRACE' && simRays && (
+      <group>
+        {simRays.map((path, i) => (
+          <Line
+            key={i}
+            points={path.points}
+            color={path.order === 0 ? "#ffffff" : path.order === 1 ? "#33cc33" : path.order === 2 ? "#ffcc00" : "#6666ff"}
+            lineWidth={1}
+            transparent
+            opacity={0.4}
+          />
+        ))}
+      </group>
+    )}
     {viewMode === '2D' ? (
       <OrthographicCamera makeDefault position={[0, sliceOffset + 8, 0]} rotation={[-Math.PI / 2, 0, 0]} zoom={80} />
     ) : (
@@ -576,6 +592,7 @@ export const SpeakerDesigner: React.FC = () => {
   const [frequencyResponse, setFrequencyResponse] = useState<number[]>(Array(24).fill(-24));
   const [absorption, setAbsorption]               = useState<number[]>(Array(24).fill(0));
   const [etcData, setEtcData]                     = useState<{ time: number; energy: number }[]>([]);
+  const [simRays, setSimRays]                     = useState<any[]>([]);
 
   // ── Object mutations ──────────────────────────────────────────────────────────
   const handleUpdateObj = (id: string, updates: Partial<SceneObject>) =>
@@ -726,9 +743,40 @@ export const SpeakerDesigner: React.FC = () => {
       if (e.data.type==='PROGRESS') { setSimProgress(e.data.progress); if(e.data.progress%25===0) addLog(`Ray  ${String(e.data.progress).padStart(3)}%`); }
       else if (e.data.type==='DONE') {
         const res: SimulationResult = e.data.results.find((r:any)=>r.receiverId==='sandbox_mic');
+        
+        // Populate Rays for visualization
+        if (res?.rayPaths) setSimRays(res.rayPaths.slice(0, 50)); 
+
         if(res?.metrics){
-          if(designerMode==='source') setFrequencyResponse(res.metrics.spl.map(v=>isFinite(v)?v:-30));
-          else setAbsorption(res.metrics.spl.map(v=>isFinite(v)?Math.max(0,Math.min(1,1-Math.pow(10,v/10)/100)):1));
+          if(designerMode==='source') {
+              setFrequencyResponse(res.metrics.spl.map(v=>isFinite(v)?v:-30));
+          } else {
+              // ADVANCED ABSORPTION EXTRACTION: Energy Ratio Method
+              const arrivals = res.metrics.arrivals || [];
+              const direct = arrivals.find(a => a.order === 0);
+              const reflections = arrivals.filter(a => a.order === 1);
+              
+              if (direct && reflections.length > 0) {
+                  const reflEnergy = Array(24).fill(0);
+                  reflections.forEach(r => {
+                      for(let f=0; f<24; f++) reflEnergy[f] += r.energy[f];
+                  });
+                  
+                  const extractedAlpha = Array(24).fill(0.1);
+                  for (let f = 0; f < 24; f++) {
+                      const avgRefDist = reflections.reduce((s, r) => s + r.time * 343.0, 0) / reflections.length;
+                      const incDist = direct.time * 343.0;
+                      // Physics: Alpha = 1 - (E_refl / E_inc) * (r_refl / r_inc)^2
+                      const distComp = (avgRefDist * avgRefDist) / (incDist * incDist);
+                      const ratio = (reflEnergy[f] / direct.energy[f]) * distComp;
+                      extractedAlpha[f] = Math.max(0.01, Math.min(0.99, 1.0 - ratio));
+                  }
+                  setAbsorption(extractedAlpha);
+              } else {
+                  // Fallback for blocked geometry
+                  setAbsorption(res.metrics.spl.map(v=>isFinite(v)?Math.max(0.1, Math.min(1.0, 1.0 - Math.pow(10, (v - 100)/10))):1));
+              }
+          }
           if(res.metrics.etc) setEtcData(res.metrics.etc);
         }
         addLog('✓ Raytracing complete'); setIsSimulating(false); worker.terminate();
@@ -993,6 +1041,7 @@ export const SpeakerDesigner: React.FC = () => {
             nx={simAccuracy.gridRes}
             viewMode={viewMode}
             transformMode={transformMode}
+            simRays={simRays}
           />
         </Canvas>
       </div>

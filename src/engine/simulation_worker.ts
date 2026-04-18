@@ -48,7 +48,7 @@ self.onmessage = (e: MessageEvent) => {
     
     for (let i = 0; i < lateRays; i += BATCH_SIZE) {
       sources.forEach((s: SceneObject) => {
-        tracer.simulateBatch(s, receivers, resultsMap, i, BATCH_SIZE);
+        tracer.simulateBatch(s, receivers, resultsMap, i, BATCH_SIZE, lateRays);
       });
       const progress = 10 + Math.floor((i / lateRays) * 85);
       self.postMessage({ type: 'PROGRESS', progress });

@@ -113,7 +113,7 @@ export class RayTracer {
 
     // Phase 2: Stochastic Ray Tracing (Late Reverb)
     const lateRays = Math.max(1000, Math.floor(this.numRays / 2));
-    this.simulateBatch(source, receivers, results, 0, lateRays);
+    this.simulateBatch(source, receivers, results, 0, lateRays, lateRays);
 
     return results;
   }
@@ -123,17 +123,22 @@ export class RayTracer {
     receivers: SceneObject[], 
     results: Map<string, RayImpulseResponse>,
     startIdx: number,
-    count: number
+    count: number,
+    totalRays: number // Added for normalization
   ) {
     if (!this.recGrid) this.recGrid = new ReceiverGrid(receivers);
     const origin = new THREE.Vector3(...source.position);
-    const endIdx = Math.min(this.numRays, startIdx + count);
+    
+    // Normalization: (n_hits / N_total) / Area_receiver
+    // R_rec = 0.25m => Area = PI * 0.25^2
+    const crossSection = Math.PI * 0.25 * 0.25;
+    const stochNorm = 1.0 / (totalRays * crossSection);
 
-    for (let i = startIdx; i < endIdx; i++) {
+    for (let i = startIdx; i < startIdx + count; i++) {
         const direction = this.getRandomDirection(source);
         const weights = this.getDirectivityWeights(source, direction);
         if (weights.every(w => w < 0.0001)) continue;
-        this.traceRay({ origin, direction }, results, weights);
+        this.traceRay({ origin, direction }, results, weights, stochNorm);
     }
   }
 
@@ -236,7 +241,8 @@ export class RayTracer {
         // Energy Calculation
         const emissionDir = new THREE.Vector3().subVectors(new THREE.Vector3(...points[1]), new THREE.Vector3(...points[0])).normalize();
         const energy = this.getDirectivityWeights(source, emissionDir);
-        const attenuation = 1.0 / Math.max(1.0, totalDist * totalDist);
+        // Correct distance decay: 1 / (4 * PI * r^2)
+        const attenuation = 1.0 / Math.max(0.1, 4 * Math.PI * totalDist * totalDist);
         
         for (let f = 0; f < 24; f++) {
             energy[f] *= attenuation;
@@ -266,7 +272,7 @@ export class RayTracer {
   }
 
 
-  private traceRay(ray: Ray, results: Map<string, RayImpulseResponse>, initialWeights?: number[]) {
+  private traceRay(ray: Ray, results: Map<string, RayImpulseResponse>, initialWeights: number[], stochNorm: number) {
     let currentRay = { origin: ray.origin.clone(), direction: ray.direction.clone() };
     let energy = initialWeights ? [...initialWeights] : Array(24).fill(1); // Energy per band
     let totalDist = 0;
@@ -306,7 +312,10 @@ export class RayTracer {
               const ir = results.get(receiver.id)!;
               ir.times.push(timeToReceiver);
               ir.orders.push(currentOrder);
-              ir.energies.push([...energy]);
+              
+              // Apply stochastic normalization to the energy profile
+              const normalizedEnergy = energy.map(e => e * stochNorm);
+              ir.energies.push([...normalizedEnergy]);
 
               // Arrival direction for stochastic ray is just the ray's current direction
               const azimuth = Math.atan2(currentRay.direction.x, currentRay.direction.z);
@@ -317,7 +326,7 @@ export class RayTracer {
               if (this.totalPathsCollected < this.MAX_PATHS && ir.paths.length < 50) {
                  ir.paths.push({
                    points: [...history, [recPos.x, recPos.y, recPos.z]],
-                   energy: energy[13],
+                   energy: energy[13] * stochNorm,
                    time: timeToReceiver,
                    order: currentOrder
                  });
