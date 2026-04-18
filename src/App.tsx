@@ -12,7 +12,6 @@ import { MobilePrompt } from './components/MobilePrompt';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useProjectStore } from './state/project_state';
 import { Maximize2, Play } from 'lucide-react';
-import logoSrc from './assets/logo.jpg';
 import './App.css';
 
 const StartScreen: React.FC<{ onStart: (fullscreen: boolean) => void }> = ({ onStart }) => {
@@ -20,39 +19,31 @@ const StartScreen: React.FC<{ onStart: (fullscreen: boolean) => void }> = ({ onS
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--bg-primary)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      gap: '36px', color: '#fff', textAlign: 'center'
+      gap: '40px', color: '#fff', textAlign: 'center'
     }}>
-      {/* Logo + wordmark */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
-        <img
-          src={logoSrc}
-          alt="Beam Audio"
-          style={{ width: '120px', height: '120px', borderRadius: '24px', objectFit: 'cover', boxShadow: '0 0 60px rgba(0,0,0,0.6)' }}
-        />
-        <div>
-          <h1 style={{ fontSize: '13px', letterSpacing: '8px', margin: 0, fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-            Acoustic Simulation
-          </h1>
-          <p style={{ fontSize: '11px', color: 'var(--text-tertiary)', letterSpacing: '3px', marginTop: '6px', textTransform: 'uppercase' }}>
-            Rays
-          </p>
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <h1 style={{ fontSize: '28px', letterSpacing: '8px', margin: 0, fontWeight: '900' }}>
+          BEAM <span style={{ color: 'var(--accent-primary)' }}>AUDIO</span> RAYS
+        </h1>
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '4px' }}>
+          Acoustic Simulation
+        </p>
       </div>
 
-      <div style={{ display: 'flex', gap: '14px' }}>
+      <div style={{ display: 'flex', gap: '16px' }}>
         <button
           className="button primary"
           onClick={() => onStart(true)}
-          style={{ padding: '14px 28px', borderRadius: '40px', fontSize: '12px', fontWeight: 'bold', gap: '10px' }}
+          style={{ padding: '16px 32px', borderRadius: '40px', fontSize: '14px', fontWeight: 'bold', gap: '12px' }}
         >
-          <Maximize2 size={16} /> Enter Fullscreen
+          <Maximize2 size={20} /> ENTER FULLSCREEN
         </button>
         <button
           className="button"
           onClick={() => onStart(false)}
-          style={{ padding: '14px 28px', borderRadius: '40px', fontSize: '12px', fontWeight: 'bold', gap: '10px' }}
+          style={{ padding: '16px 32px', borderRadius: '40px', fontSize: '14px', fontWeight: 'bold', gap: '12px' }}
         >
-          <Play size={16} /> Start Workspace
+          <Play size={20} /> START WORKSPACE
         </button>
       </div>
     </div>
